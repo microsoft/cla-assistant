@@ -360,19 +360,13 @@ module.exports = {
         }, collectData);
     },
 
-    validateSharedGistItems: function (req) {
+    validateSharedGistItems: function (req, done) {
         var self = this;
         getLinkedItemsWithSharedGist(req.args.gist, function (error, sharedItems) {
             if (error) {
-                log.error(error);
+                done(error);
             }
-            var items = [];
-            if (sharedItems.repos && sharedItems.repos.length) {
-                items = items.concat(sharedItems.repos);
-            }
-            if (sharedItems.orgs && sharedItems.orgs.length) {
-                items = items.concat(sharedItems.orgs);
-            }
+            var items = (sharedItems.repos || []).concat(sharedItems.orgs || []);
             async.series(items.map(function (item) {
                 return function (callback) {
                     var tmpReq = {
@@ -388,10 +382,8 @@ module.exports = {
                     tmpReq.args.owner = item.owner;
                     self.validatePullRequests(tmpReq, callback);
                 };
-            }), function (er) {
-                if (er) {
-                    log.error(er);
-                }
+            }), function (err) {
+                done(error);
             });
         });
     },
@@ -424,7 +416,11 @@ module.exports = {
                 req.args.token = item.token;
                 if (item.sharedGist) {
                     req.args.gist = item.gist;
-                    self.validateSharedGistItems(req);
+                    self.validateSharedGistItems(req, function (error) {
+                        if (error) {
+                            log.error(error);
+                        }
+                    });
                 } else if (item.org) {
                     req.args.org = item.org;
                     self.validateOrgPullRequests(req);

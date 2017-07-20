@@ -564,6 +564,40 @@ describe('cla:check', function () {
             it_done();
         });
     });
+
+    it('should positive check when signed a sharedGist before', function (it_done) {
+        var args = {
+            user: 'login',
+            repo: 'myRepo',
+            owner: 'owner',
+            gist: 'gist',
+            token: 'token'
+        };
+        var linkedRepo = Object.assign({
+            repoId: 1,
+            sharedGist: true
+        }, args);
+        var version = '123';
+        testRes.orgServiceGet = null;
+        testRes.repoServiceGet = linkedRepo;
+        testGistData = JSON.stringify({
+            url: args.gist,
+            history: [{
+                version: version
+            }]
+        });
+        cla.check(args, function (error) {
+            assert(repo_service.getGHRepo.called);
+            assert(CLA.findOne.calledWith({
+                owner: undefined,
+                repo: undefined,
+                user: args.user,
+                gist_url: args.gist,
+                gist_version: version
+            }));
+            it_done();
+        });
+    });
 });
 
 describe('cla:sign', function () {
