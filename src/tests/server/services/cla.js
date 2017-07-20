@@ -177,6 +177,28 @@ describe('cla:get', function () {
             it_done();
         });
     });
+
+    it('should find a shared cla with given user', function (it_done) {
+        var args = {
+            orgId: 1,
+            repoId: 1296269,
+            user: 'login',
+            gist: 'gistUrl',
+            gist_version: 'xyz',
+            sharedGist: true
+        };
+        var expArgs = {
+            repo: undefined,
+            owner: undefined,
+            user: 'login',
+            gist_url: 'gistUrl',
+            gist_version: 'xyz'
+        };
+        cla.get(args, function () {
+            assert(CLA.findOne.calledWith(expArgs));
+            it_done();
+        });
+    });
 });
 
 describe('cla:getLastSignature', function () {
@@ -539,6 +561,40 @@ describe('cla:check', function () {
 
         cla.check(args, function (err) {
             assert(err);
+            it_done();
+        });
+    });
+
+    it('should positive check when signed a sharedGist before', function (it_done) {
+        var args = {
+            user: 'login',
+            repo: 'myRepo',
+            owner: 'owner',
+            gist: 'gist',
+            token: 'token'
+        };
+        var linkedRepo = Object.assign({
+            repoId: 1,
+            sharedGist: true
+        }, args);
+        var version = '123';
+        testRes.orgServiceGet = null;
+        testRes.repoServiceGet = linkedRepo;
+        testGistData = JSON.stringify({
+            url: args.gist,
+            history: [{
+                version: version
+            }]
+        });
+        cla.check(args, function (error) {
+            assert(repo_service.getGHRepo.called);
+            assert(CLA.findOne.calledWith({
+                owner: undefined,
+                repo: undefined,
+                user: args.user,
+                gist_url: args.gist,
+                gist_version: version
+            }));
             it_done();
         });
     });
