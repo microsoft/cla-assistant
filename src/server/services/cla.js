@@ -110,11 +110,13 @@ module.exports = function () {
             var newQuery = {
                 owner: undefined,
                 repo: undefined,
-                user: query.user,
                 gist_url: query.gist_url,
             };
             if (query.gist_version) {
                 newQuery.gist_version = query.gist_version;
+            }
+            if (query.user) {
+                newQuery.user = query.user;
             }
             return newQuery;
         }
