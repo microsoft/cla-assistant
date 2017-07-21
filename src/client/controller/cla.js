@@ -16,6 +16,7 @@ module.controller('ClaController', ['$window', '$scope', '$stateParams', '$RAW',
 			$scope.params = $stateParams;
 			$scope.user = {};
 			$scope.signed = false;
+			$scope.signedSharedGist = false;
 
 			function getUserEmail(key) {
 				$HUBService.call('users', 'getEmails', {}, function (err, data) {
@@ -53,7 +54,12 @@ module.controller('ClaController', ['$window', '$scope', '$stateParams', '$RAW',
 							$scope.customValues[key] = customFields[key];
 						});
 					}
+					$scope.signedSharedGist = signedSharedGist(res.value);
 				});
+			}
+
+			function signedSharedGist(cla) {
+				return !cla.owner;
 			}
 
 			function getCLA() {
@@ -174,6 +180,10 @@ module.controller('ClaController', ['$window', '$scope', '$stateParams', '$RAW',
 					return !valid;
 				});
 				return valid;
+			};
+
+			$scope.showSharedGistMsg = function () {
+				return $scope.linkedItem && $scope.linkedItem.sharedGist && (!$scope.signed || ($scope.signed && $scope.signedSharedGist));
 			};
 
 			$q.all([userPromise, repoPromise]).then(function () {

@@ -107,18 +107,20 @@ module.exports = function () {
 
     var updateQuery = function (query, sharedGist) {
         if (sharedGist) {
-            var newQuery = {
+            var addition = {
                 owner: undefined,
                 repo: undefined,
                 gist_url: query.gist_url,
             };
             if (query.gist_version) {
-                newQuery.gist_version = query.gist_version;
+                addition.gist_version = query.gist_version;
             }
             if (query.user) {
-                newQuery.user = query.user;
+                addition.user = query.user;
             }
-            return newQuery;
+            return {
+                $or: [query, addition]
+            };
         }
         return query;
     };

@@ -187,15 +187,22 @@ describe('cla:get', function () {
             gist_version: 'xyz',
             sharedGist: true
         };
-        var expArgs = {
-            repo: undefined,
-            owner: undefined,
-            user: 'login',
-            gist_url: 'gistUrl',
-            gist_version: 'xyz'
-        };
         cla.get(args, function () {
-            assert(CLA.findOne.calledWith(expArgs));
+            assert(CLA.findOne.calledWith({
+                $or: [{
+                    user: args.user,
+                    gist_url: args.gist,
+                    gist_version: args.gist_version,
+                    ownerId: args.orgId,
+                    org_cla: true
+                }, {
+                    user: args.user,
+                    gist_url: args.gist,
+                    gist_version: args.gist_version,
+                    repo: undefined,
+                    owner: undefined
+                }]
+            }));
             it_done();
         });
     });
@@ -253,7 +260,7 @@ describe('cla:getLastSignature', function () {
         var args = {
             repo: 'myRepo',
             owner: 'owner',
-            user: 'login',
+            user: 'login'
         };
         testRes.repoServiceGet = {
             repoId: 123,
@@ -265,10 +272,16 @@ describe('cla:getLastSignature', function () {
         };
         cla.getLastSignature(args, function () {
             assert(CLA.findOne.calledWith({
-                owner: undefined,
-                repo: undefined,
-                user: args.user,
-                gist_url: testRes.repoServiceGet.gist
+                $or: [{
+                    user: args.user,
+                    gist_url: testRes.repoServiceGet.gist,
+                    repoId: testRes.repoServiceGet.repoId
+                }, {
+                    owner: undefined,
+                    repo: undefined,
+                    user: args.user,
+                    gist_url: testRes.repoServiceGet.gist
+                }]
             }));
             it_done();
         });
@@ -614,11 +627,19 @@ describe('cla:check', function () {
         cla.check(args, function (error) {
             assert(repo_service.getGHRepo.called);
             assert(CLA.findOne.calledWith({
-                owner: undefined,
-                repo: undefined,
-                user: args.user,
-                gist_url: args.gist,
-                gist_version: version
+                $or: [{
+                    user: args.user,
+                    gist_url: args.gist,
+                    gist_version: version,
+                    org_cla: false,
+                    repoId: linkedRepo.repoId
+                }, {
+                    owner: undefined,
+                    repo: undefined,
+                    user: args.user,
+                    gist_url: args.gist,
+                    gist_version: version
+                }]
             }));
             it_done();
         });
@@ -1060,6 +1081,11 @@ describe('cla:getAll', function () {
     });
 
     it('should get all clas for shared gist repo/org', function (it_done) {
+        CLA.find.restore();
+        sinon.stub(CLA, 'find', function (arg, done) {
+            assert(arg);
+            done();
+        });
         var args = {
             repoId: testData.repo.id,
             gist: {
@@ -1071,10 +1097,16 @@ describe('cla:getAll', function () {
 
         cla.getAll(args, function (err) {
             assert(CLA.find.calledWith({
-                repo: undefined,
-                owner: undefined,
-                gist_url: 'gistUrl',
-                gist_version: 'xyz'
+                $or: [{
+                    gist_url: args.gist.gist_url,
+                    gist_version: args.gist.gist_version,
+                    repoId: args.repoId
+                }, {
+                    repo: undefined,
+                    owner: undefined,
+                    gist_url: args.gist.gist_url,
+                    gist_version: args.gist.gist_version
+                }]
             }));
             it_done();
         });
