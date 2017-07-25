@@ -86,6 +86,7 @@ describe('', function () {
             },
             repoService: {
                 get: JSON.parse(JSON.stringify(testData.repo_from_db)), //clone object
+                all: [JSON.parse(JSON.stringify(testData.repo_from_db))]
             },
             orgService: {
                 get: JSON.parse(JSON.stringify(testData.org_from_db)), //clone object
@@ -101,7 +102,8 @@ describe('', function () {
                 user: null
             },
             repoService: {
-                get: null
+                get: null,
+                all: null
             },
             orgService: {
                 get: null
@@ -401,9 +403,13 @@ describe('', function () {
                 cb(null, 'done');
             });
             sinon.stub(cla, 'check', function (args, cb) {
+                args.gist = req.args.gist;
                 cb(null, true);
             });
             sinon.stub(prService, 'editComment', function () {});
+            sinon.stub(repo_service, 'all', function (cb) {
+                cb(error.repoService.all, resp.repoService.all);
+            });
         });
 
         afterEach(function () {
@@ -411,6 +417,7 @@ describe('', function () {
             cla.sign.restore();
             prService.editComment.restore();
             statusService.update.restore();
+            repo_service.all.restore();
         });
 
         it('should call cla service on sign', function (it_done) {
@@ -464,6 +471,7 @@ describe('', function () {
             resp.repoService.get = null;
             resp.cla.getLinkedItem = resp.orgService.get;
             global.config.server.github.timeToWait = 10;
+            resp.repoService.all = [];
 
             this.timeout(100);
             cla_api.sign(req, function (err, res) {
@@ -480,6 +488,7 @@ describe('', function () {
             this.timeout(600);
             resp.repoService.get = null;
             resp.cla.getLinkedItem = resp.orgService.get;
+            resp.repoService.all = [];
             console.log(resp.github.callRepos.length);
             for (var index = 0; index < 28; index++) {
                 resp.github.callRepos.push({
@@ -530,6 +539,7 @@ describe('', function () {
             prService.editComment.restore();
 
             sinon.stub(cla, 'check', function (args, cb) {
+                args.gist = req.args.gist;
                 cb(null, true, {
                     signed: [],
                     not_signed: []
@@ -948,7 +958,8 @@ describe('', function () {
                 args: {
                     repo: 'Hello-World',
                     owner: 'octocat',
-                    token: 'test_token'
+                    token: 'test_token',
+                    gist: testData.repo_from_db.gist
                 }
             };
             sinon.stub(statusService, 'update', function (args) {
@@ -956,16 +967,21 @@ describe('', function () {
                 assert(args.token);
                 assert(args.sha);
             });
+            sinon.stub(statusService, 'delete').returns(null);
             sinon.stub(cla, 'check', function (args, cb) {
+                args.gist = req.args.gist;
                 cb(null, true);
             });
             sinon.stub(prService, 'editComment', function () {});
+            sinon.stub(prService, 'deleteComment', function () {});
         });
 
         afterEach(function () {
             cla.check.restore();
             statusService.update.restore();
+            statusService.delete.restore();
             prService.editComment.restore();
+            prService.deleteComment.restore();
         });
         it('should update all open pull requests', function (it_done) {
 
@@ -1002,6 +1018,96 @@ describe('', function () {
 
         it('should load all PRs if there are more to load', function () {
 
+        });
+
+        it('should delete comments when rechecking PRs of a repo with a null CLA', function (it_done) {
+            cla.check.restore();
+            sinon.stub(cla, 'check', function (args, cb) {
+                args.gist = null;
+                cb(null, true);
+            });
+            cla_api.validatePullRequests(req, function (err) {
+                assert(prService.deleteComment.called);
+                assert(statusService.delete.called);
+                it_done();
+            });
+        });
+    });
+
+    describe('cla: validateOrgPullRequests', function () {
+        var req;
+        beforeEach(function () {
+            req = {
+                args: {
+                    repo: 'Hello-World',
+                    owner: 'octocat',
+                    gist: 'https://gist.github.com/aa5a315d61ae9438b18d',
+                    token: 'testToken',
+                    org: 'octocat'
+                }
+            };
+            global.config.server.github.timeToWait = 0;
+            resp.github.callRepos = testData.orgRepos;
+            sinon.stub(repo_service, 'all', function (cb) {
+                cb(error.repoService.all, resp.repoService.all);
+            });
+            sinon.stub(cla_api, 'validatePullRequests', function (args, callback) {
+                if (typeof callback === 'function') {
+                    callback(null, null);
+                }
+            });
+        });
+
+        afterEach(function () {
+            repo_service.all.restore();
+            cla_api.validatePullRequests.restore();
+        });
+
+        it('should NOT validate repos in the excluded list', function (it_done) {
+            resp.orgService.get.isRepoExcluded = function () {
+                return true;
+            };
+            resp.repoService.all = [];
+            cla_api.validateOrgPullRequests(req, function () {
+                setTimeout(function () {
+                    assert(!cla_api.validatePullRequests.called);
+                    it_done();
+                });
+            });
+        });
+
+        it('should NOT validate repos with overridden cla', function (it_done) {
+            resp.orgService.get.isRepoExcluded = function () {
+                return false;
+            };
+            cla_api.validateOrgPullRequests(req, function () {
+                setTimeout(function () {
+                    assert(!cla_api.validatePullRequests.called);
+                    it_done();
+                });
+            });
+        });
+
+        it('should validate repos that is not in the excluded list and don\'t have overridden cla', function (it_done) {
+            resp.repoService.all = [];
+            resp.orgService.get.isRepoExcluded = function () {
+                return false;
+            };
+            cla_api.validateOrgPullRequests(req, function () {
+                setTimeout(function() {
+                    assert(cla_api.validatePullRequests.called);
+                    it_done();
+                });
+            });
+        });
+
+        it('should NOT validate when querying repo collection throw error', function (it_done) {
+            error.repoService.all = 'any error of querying repo collection';
+            cla_api.validateOrgPullRequests(req, function (err) {
+                assert(!!err);
+                assert(!cla_api.validatePullRequests.called);
+                it_done();
+            });
         });
     });
 
