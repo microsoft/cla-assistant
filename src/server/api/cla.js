@@ -102,6 +102,48 @@ function getLinkedItemsWithSharedGist(gist, done) {
     });
 }
 
+function getReposNeedToValidate(req, done) {
+    var repos = [];
+    github.call({
+        obj: 'repos',
+        fun: 'getForOrg',
+        arg: {
+            org: req.args.org,
+            per_page: 100
+        },
+        token: req.args.token || req.user.token
+    }, function (error, allRepos) {
+        if ((allRepos && allRepos.message) || error || (allRepos && allRepos.length === 0)) {
+            return done((allRepos && allRepos.message) || error, repos);
+        }
+        orgService.get(req.args, function (err, linkedOrg) {
+            if (err) {
+                return done(err, repos);
+            }
+            repoService.all(function (er, linkedRepos) {
+                if (er) {
+                    return done(er, repos);
+                }
+                var linkedRepoSet = new Set(linkedRepos.map(function (linkedRepo) {
+                    return linkedRepo.repoId.toString();
+                }));
+                repos = allRepos.filter(function (repo) {
+                    if (linkedOrg.isRepoExcluded !== undefined && linkedOrg.isRepoExcluded(repo.name)) {
+                        // The repo has been excluded.
+                        return false;
+                    }
+                    if (linkedRepoSet.has(repo.id.toString())) {
+                        // The repo has a separate CLA.
+                        return false;
+                    }
+                    return true;
+                });
+                done(null, repos);
+            });
+        });
+    });
+}
+
 module.exports = {
     getGist: function (req, done) {
         if (req.user && req.user.token && req.args.gist) {
@@ -242,43 +284,27 @@ module.exports = {
 
     validateOrgPullRequests: function (req, done) {
         var self = this;
-        github.call({
-            obj: 'repos',
-            fun: 'getForOrg',
-            arg: {
-                org: req.args.org,
-                per_page: 100
-            },
-            token: req.args.token || req.user.token
-        }, function (err, repos) {
-            orgService.get(req.args, function (err, linkedOrg) {
-                if (repos && !repos.message && repos.length > 0) {
-                    var time = config.server.github.timeToWait;
-                    repos
-                        .filter(function (repo) {
-                            return (linkedOrg.isRepoExcluded === undefined) || !linkedOrg.isRepoExcluded(repo.name);
-                        })
-                        .forEach(function (repo, index) {
-                            var validateRequest = {
-                                args: {
-                                    owner: repo.owner.login,
-                                    repo: repo.name,
-                                    token: req.args.token || req.user.token
-                                },
-                                user: req.user
-                            };
-                            //try to avoid rasing githubs abuse rate limit:
-                            //take 1 second per repo and wait 10 seconds after each 10th repo
-                            setTimeout(function () {
-                                log.info('validateOrgPRs for ' + validateRequest.args.owner + '/' + validateRequest.args.repo);
-                                self.validatePullRequests(validateRequest);
-                            }, time * (index + (Math.floor(index / 10) * 10)));
-                        });
-                }
-                if (typeof done === 'function') {
-                    done(repos.message || err, true);
-                }
+        getReposNeedToValidate(req, function (error, repos) {
+            var time = config.server.github.timeToWait;
+            repos.forEach(function (repo, index) {
+                var validateRequest = {
+                    args: {
+                        owner: repo.owner.login,
+                        repo: repo.name,
+                        token: req.args.token || req.user.token
+                    },
+                    user: req.user
+                };
+                //try to avoid rasing githubs abuse rate limit:
+                //take 1 second per repo and wait 10 seconds after each 10th repo
+                setTimeout(function () {
+                    log.info('validateOrgPRs for ' + validateRequest.args.owner + '/' + validateRequest.args.repo);
+                    self.validatePullRequests(validateRequest);
+                }, time * (index + (Math.floor(index / 10) * 10)));
             });
+            if (typeof done === 'function') {
+                done(error, true);
+            }
         });
     },
 
@@ -296,14 +322,23 @@ module.exports = {
                 log.error(cla_err);
             }
             args.signed = all_signed;
-            status.update(args, done);
-            prService.editComment({
-                repo: args.repo,
-                owner: args.owner,
-                number: args.number,
-                signed: args.signed,
-                user_map: user_map
-            });
+            if (args.gist) {
+                status.update(args);
+                prService.editComment({
+                    repo: args.repo,
+                    owner: args.owner,
+                    number: args.number,
+                    signed: args.signed,
+                    user_map: user_map
+                });
+            } else {
+                status.delete(args);
+                prService.deleteComment({
+                    repo: args.repo,
+                    owner: args.owner,
+                    number: args.number
+                });
+            }
         });
     },
 
