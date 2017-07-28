@@ -282,19 +282,18 @@ module.exports = {
 
         };
 
-        orgService.get({
-            orgId: args.orgId
-        }, function (e, org) {
-            if (!org) {
-                self.get(args, function (e, repo) {
-                    if (e || !repo) {
-                        handleError(e, args);
-                        return;
+        self.get(args, function (error, repo) {
+            if (!repo) {
+                orgService.get({
+                    orgId: args.orgId
+                }, function (err, org) {
+                    if (err || !org) {
+                        return handleError(err || error, args);
                     }
-                    collectTokenAndCallGithub(args, repo);
+                    collectTokenAndCallGithub(args, org);
                 });
             } else {
-                collectTokenAndCallGithub(args, org);
+                collectTokenAndCallGithub(args, repo);
             }
         });
     },
