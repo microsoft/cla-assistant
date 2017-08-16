@@ -57,7 +57,7 @@ passport.use(new Strategy(
                         done(err || 'Could not find ' + data.login);
                         return;
                     }
-                    done(err, merge(data._json, {
+                    done(err, merge(data, {
                         token: dbUser.token,
                         scope: authorization.scopes.toString()
                     }));

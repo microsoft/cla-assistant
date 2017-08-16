@@ -187,9 +187,9 @@ app.all('/api/:obj/:fun', function (req, res) {
     res.set('Content-Type', 'application/json');
     api[req.params.obj][req.params.fun](req, function (err, obj) {
         if (err) {
-            return res.status(err.code > 0 ? err.code : 500).send(JSON.stringify(err.text || err));
+            return res.status(err.code > 0 ? err.code : 500).send(JSON.stringify(err.text || err.message || err));
         }
-        if (obj) {
+        if (obj !== undefined && obj !== null) {
             obj = cleanup.cleanObject(obj);
             res.send(JSON.stringify(obj));
         } else {

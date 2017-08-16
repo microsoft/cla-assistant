@@ -1,5 +1,6 @@
 var passport = require('passport');
 var express = require('express');
+var utils = require('../middleware/utils');
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // User controller
@@ -39,10 +40,7 @@ router.get('/auth/github', checkReturnTo);
 // router.get('/auth/github/callback', passport.authenticate('github', { successReturnToOrRedirect: '/', failureRedirect: '/' }));
 router.get('/auth/github/callback', passport.authenticate('github', { failureRedirect: '/' }),
     function (req, res) {
-        function couldBeAdmin(username) {
-          return config.server.github.admin_users.length === 0 || config.server.github.admin_users.indexOf(username) >= 0;
-        }
-        if (req.user && req.session.requiredScope != 'public' && couldBeAdmin(req.user.login) && (!req.user.scope || req.user.scope.indexOf('write:repo_hook') < 0)) {
+        if (req.user && req.session.requiredScope != 'public' && utils.couldBeAdmin(req.user.login) && (!req.user.scope || req.user.scope.indexOf('write:repo_hook') < 0)) {
             return res.redirect('/auth/github?admin=true');
         }
         res.redirect(req.session.returnTo || '/');

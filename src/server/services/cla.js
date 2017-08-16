@@ -431,14 +431,18 @@ module.exports = function () {
             var self = this;
             return getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
                 if (!item.gist) {
-                    throw new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
+                    var nullClaErr = new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
+                    nullClaErr.code = 400;
+                    throw nullClaErr;
                 }
                 return getGist(item.gist, item.token).then(function (gist) {
                     var onDates = [new Date()];
                     var currentVersion = gist.data.history[0].version;
                     return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates).then(function (cla) {
                         if (cla) {
-                            throw new Error('You\'ve already signed the cla');
+                            var signedErr = new Error('You\'ve already signed the cla');
+                            signedErr.code = 400;
+                            throw signedErr;
                         }
                         var argsToCreate = {
                             user: args.user,
@@ -623,7 +627,9 @@ module.exports = function () {
         terminate: function (args, done) {
             return getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
                 if (!item.gist) {
-                    throw new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
+                    var nullClaErr = new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
+                    nullClaErr.code = 400;
+                    throw nullClaErr;
                 }
                 return getGist(item.gist, item.token).then(function (gist) {
                     var endDate = new Date(args.endDate);
@@ -631,7 +637,9 @@ module.exports = function () {
                     var currentVersion = gist.data.history[0].version;
                     return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates).then(function (cla) {
                         if (!cla) {
-                            throw new Error('No valid cla record');
+                            var noRecordErr = new Error('No valid cla record');
+                            noRecordErr.code = 400;
+                            throw noRecordErr;
                         }
                         cla.end_at = endDate;
                         return cla.save().then(function (dbCla) {

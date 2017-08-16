@@ -1213,4 +1213,255 @@ describe('', function () {
             });
         });
     });
+
+    describe('cla:addSignature', function () {
+        var req;
+        beforeEach(function () {
+            req = {
+                args: {
+                    userId: 1,
+                    user: 'user',
+                    repo: 'Hello-World',
+                    owner: 'octocat',
+                    custom_fields: 'custom_fields',
+                    validatePRs: true
+                }
+            };
+            error.cla.sign = null;
+            error.cla_api = {
+                validateRelatedPullRequests: null
+            };
+            sinon.stub(cla, 'sign', function (args, cb) {
+                cb(error.cla.sign, 'done');
+            });
+            sinon.stub(cla_api, 'validateRelatedPullRequests', function (args, done) {
+                done(error.cla_api.validateRelatedPullRequests);
+            });
+        });
+
+        afterEach(function () {
+            cla.sign.restore();
+            cla_api.validateRelatedPullRequests.restore();
+        });
+
+        it('should call cla service sign and also validate all related pull requests', function (it_done) {
+            cla_api.addSignature(req, function (err) {
+                assert.ifError(err);
+                assert(cla.sign.called);
+                assert(cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+
+        it('should not validate pull requests when validatePRs arguments set to false', function (it_done) {
+            req.args.validatePRs = false;
+            cla_api.addSignature(req, function (err) {
+                assert.ifError(err);
+                assert(cla.sign.called);
+                assert(!cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+
+        it('should send validation error when repo and owner or org is not provided', function (it_done) {
+            var req = {
+                args: {
+                    userId: 1,
+                    user: 'user'
+                }
+            };
+            cla_api.addSignature(req, function (err) {
+                assert(err);
+                assert(!cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+
+        it('should send error and log error when sign cla failed', function (it_done) {
+            error.cla.sign = 'You\'ve already signed the cla.';
+            cla_api.addSignature(req, function (err) {
+                assert(err === error.cla.sign);
+                assert(log.error.called);
+                assert(!cla_api.validate.called);
+                it_done();
+            });
+        });
+
+        it('should log error when validate related pull requests failed', function (it_done) {
+            error.cla_api.validateRelatedPullRequests = 'Validate pull request failed';
+            cla_api.addSignature(req, function (err) {
+                assert(err);
+                assert(cla.sign.called);
+                assert(cla_api.validateRelatedPullRequests.called);
+                assert(log.error.called);
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:hasSignature', function () {
+        var req;
+        beforeEach(function () {
+            req = {
+                args: {
+                    userId: 1,
+                    user: 'user',
+                    repo: 'Hello-World',
+                    owner: 'octocat'
+                }
+            };
+            sinon.stub(cla, 'check', function (args, done) {
+                done(null, true);
+            });
+        });
+
+        afterEach(function () {
+            cla.check.restore();
+        });
+
+        it('should call cla service check', function (it_done) {
+            cla_api.hasSignature(req, function (err) {
+                assert.ifError(err);
+                assert(cla.check.called);
+                it_done();
+            });
+        });
+
+        it('should send validation error when repo and owner or org is not provided', function (it_done) {
+            var req = {
+                args: {
+                    userId: 1,
+                    user: 'user'
+                }
+            };
+            cla_api.hasSignature(req, function (err) {
+                assert(err);
+                assert(!cla.check.called);
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:terminateSignature', function () {
+        var req;
+        beforeEach(function () {
+            req = {
+                args: {
+                    userId: 1,
+                    user: 'user',
+                    repo: 'Hello-World',
+                    owner: 'octocat',
+                    endDate: new Date().toISOString(),
+                    validatePRs: true
+                }
+            };
+            error.cla.terminate = null;
+            error.cla_api = {
+                validateRelatedPullRequests: null
+            };
+            sinon.stub(cla, 'terminate', function (args, done) {
+                done(error.cla.terminate);
+            });
+            sinon.stub(cla_api, 'validateRelatedPullRequests', function (args, done) {
+                done(error.cla_api.validateRelatedPullRequests);
+            });
+        });
+
+        afterEach(function () {
+            cla.terminate.restore();
+            cla_api.validateRelatedPullRequests.restore();
+        });
+
+        it('should call cla service terminate and also validate all related pull requests', function (it_done) {
+            cla_api.terminateSignature(req, function (err) {
+                assert.ifError(err);
+                assert(cla.terminate.called);
+                assert(cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+
+        it('should not validate pull requests when validatePRs arguments set to false', function (it_done) {
+            req.args.validatePRs = false;
+            cla_api.terminateSignature(req, function (err) {
+                assert.ifError(err);
+                assert(cla.terminate.called);
+                assert(!cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+
+        it('should send validation error when repo and owner or org is not provided', function (it_done) {
+            var req = {
+                args: {
+                    userId: 1,
+                    user: 'user'
+                }
+            };
+            cla_api.terminateSignature(req, function (err) {
+                assert(err);
+                assert(!cla.terminate.called);
+                it_done();
+            });
+        });
+
+        it('should send error and log error when sign cla failed', function (it_done) {
+            error.cla.terminate = 'Cannot find cla record';
+            cla_api.terminateSignature(req, function (err) {
+                assert(err === error.cla.terminate);
+                assert(log.error.called);
+                assert(!cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+
+        it('should log error when validate related pull requests failed', function (it_done) {
+            error.cla_api.validateRelatedPullRequests = 'Validate pull request failed';
+            cla_api.terminateSignature(req, function (err) {
+                assert(cla.terminate.called);
+                assert(cla_api.validateRelatedPullRequests.called);
+                assert(log.error.called);
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:validate', function () {
+        var req;
+        beforeEach(function () {
+            req = {
+                args: {
+                    repo: 'Hello-World',
+                    owner: 'octocat'
+                }
+            };
+            error.cla_api = {
+                validateRelatedPullRequests: null
+            };
+            sinon.stub(cla_api, 'validateRelatedPullRequests', function (args, done) {
+                done(error.cla_api.validateRelatedPullRequests);
+            });
+        });
+
+        afterEach(function () {
+            cla_api.validateRelatedPullRequests.restore();
+        });
+
+        it('should call validateRelatedPullRequests() to validate related pull requests', function (it_done) {
+            cla_api.validate(req, function (err) {
+                assert(cla_api.validateRelatedPullRequests.called);
+                assert.ifError(err);
+                it_done();
+            });
+        });
+
+        it('should return joi validation error when repo is not given', function (it_done) {
+            req.args.repo = undefined;
+            cla_api.validate(req, function (err) {
+                assert(err);
+                assert(!cla_api.validateRelatedPullRequests.called);
+                it_done();
+            });
+        });
+    });
 });
