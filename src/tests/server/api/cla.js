@@ -663,7 +663,8 @@ describe('', function () {
                 assert.deepEqual(args, {
                     repo: 'Hello-World',
                     owner: 'octocat',
-                    user: 'user'
+                    user: 'user',
+                    number: undefined
                 });
                 cb(null, true);
             });
