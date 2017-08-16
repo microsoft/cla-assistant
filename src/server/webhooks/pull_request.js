@@ -20,7 +20,9 @@ function handleWebHook(args) {
                 }
                 args.signed = signed;
                 status.update(args);
-                // if (!signed) {
+                if (config.server.feature_flag.close_comment === 'true' && signed) {
+                    return;
+                }
                 pullRequest.badgeComment(
                     args.owner,
                     args.repo,
@@ -28,7 +30,6 @@ function handleWebHook(args) {
                     signed,
                     user_map
                 );
-                // }
             });
         } else {
             if (!args.handleCount || args.handleCount < 2) {

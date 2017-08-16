@@ -493,7 +493,7 @@ describe('status', function () {
                         repo: args.repo,
                         sha: githubCallPRGet.data.head.sha,
                         state: 'success',
-                        description: 'No need to sign Contributor License Agreement.',
+                        description: 'No Contributor License Agreement required.',
                         target_url: undefined,
                         context: 'license/cla',
                         noCache: true

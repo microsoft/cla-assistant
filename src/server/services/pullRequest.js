@@ -20,7 +20,7 @@ var commentText = function (signed, badgeUrl, claUrl, user_map, recheckUrl) {
             text += '<br/>:white_check_mark: ' + signee;
         });
         user_map.not_signed.forEach(function (signee) {
-            text += '<br/>:x: ' + signee;
+            text += '<br/>:x: ' + signee + ' [sign now](' + claUrl + ')';
         });
         text += '<br/>';
     }
