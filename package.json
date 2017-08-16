@@ -34,6 +34,7 @@
     "express-session": "^1.13.0",
     "github": "^7.0.1",
     "glob": "^7.0.5",
+    "joi": "^10.6.0",
     "karma": "^1.1.0",
     "karma-mocha": "^1.1.1",
     "memory-cache": "^0.1.6",

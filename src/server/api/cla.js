@@ -1,6 +1,7 @@
 // modules
 var async = require('async');
 var q = require('q');
+var Joi = require('joi');
 
 // services
 var github = require('../services/github');
@@ -146,30 +147,42 @@ function getReposNeedToValidate(req, done) {
 
 module.exports = {
     getGist: function (req, done) {
-        if (req.user && req.user.token && req.args.gist) {
-            cla.getGist({
-                token: req.user.token,
-                gist: req.args.gist
-            }, done);
-        } else {
-            var service = req.args.orgId ? orgService : repoService;
-            service.get(req.args, function (err, item) {
-                if (err || !item) {
-                    log.warn(new Error(err).stack, 'with args: ', req.args);
-                    done(err);
-                    return;
-                }
-                var gist_args = {
-                    gist_url: item.gist
-                };
-                gist_args = req.args.gist ? req.args.gist : gist_args;
-                token = item.token;
+        var schema = Joi.object().keys({
+            gist: Joi.alternatives([Joi.string().uri(), Joi.object().keys({ gist_url: Joi.string().uri(), gist_version: Joi.strict() })]),
+            repoId: Joi.number(),
+            orgId: Joi.number(),
+            repo: Joi.string(),
+            owner: Joi.string()
+        });
+        Joi.validate(req.args, schema, { abortEarly: false }, function (joiErr) {
+            if (joiErr) {
+                return done(joiErr);
+            }
+            if (req.user && req.user.token && req.args.gist) {
                 cla.getGist({
-                    token: token,
-                    gist: gist_args
+                    token: req.user.token,
+                    gist: req.args.gist
                 }, done);
-            });
-        }
+            } else {
+                var service = req.args.orgId ? orgService : repoService;
+                service.get(req.args, function (err, item) {
+                    if (err || !item) {
+                        log.warn(new Error(err).stack, 'with args: ', req.args);
+                        done(err);
+                        return;
+                    }
+                    var gist_args = {
+                        gist_url: item.gist
+                    };
+                    gist_args = req.args.gist ? req.args.gist : gist_args;
+                    token = item.token;
+                    cla.getGist({
+                        token: token,
+                        gist: gist_args
+                    }, done);
+                });
+            }
+        });
     },
 
     get: function (req, done) {
@@ -417,9 +430,7 @@ module.exports = {
                     tmpReq.args.owner = item.owner;
                     self.validatePullRequests(tmpReq, callback);
                 };
-            }), function (err) {
-                done(err);
-            });
+            }), done);
         });
     },
 
@@ -438,32 +449,14 @@ module.exports = {
         cla.sign(args, function (err, signed) {
             if (err) {
                 log.error(err);
+                return done(err);
             }
-            self.getLinkedItem({
-                args: {
-                    repo: args.repo,
-                    owner: args.owner
+            self.validateRelatedPullRequests(req, function (validateErr) {
+                if (validateErr) {
+                    log.error(validateErr);
                 }
-            }, function (e, item) {
-                if (e) {
-                    log.error(e);
-                }
-                req.args.token = item.token;
-                if (item.sharedGist) {
-                    req.args.gist = item.gist;
-                    self.validateSharedGistItems(req, function (error) {
-                        if (error) {
-                            log.error(error);
-                        }
-                    });
-                } else if (item.org) {
-                    req.args.org = item.org;
-                    self.validateOrgPullRequests(req);
-                } else {
-                    self.validatePullRequests(req);
-                }
+                done(validateErr, signed);
             });
-            done(err, signed);
         });
     },
 
@@ -502,6 +495,141 @@ module.exports = {
                 }, callback);
             });
         }, done);
+    },
+
+    addSignature: function (req, done) {
+        var self = this;
+        var schema = Joi.object().keys({
+            user: Joi.string().required(),
+            userId: Joi.number().required(),
+            org: Joi.string(),
+            owner: Joi.string(),
+            repo: Joi.string(),
+            custom_fields: Joi.string(),
+            validatePRs: Joi.boolean()
+        }).and('repo', 'owner').xor('repo', 'org');
+        Joi.validate(req.args, schema, { abortEarly: false, convert: false }, function (joiErr) {
+            if (joiErr) {
+                return done(joiErr);
+            }
+            req.args.owner = req.args.owner || req.args.org;
+            delete req.args.org;
+            cla.sign(req.args, function (err, signed) {
+                if (err) {
+                    log.error(err);
+                    return done(err);
+                }
+                if (!req.args.validatePRs) {
+                    return done(null, signed);
+                }
+                self.validateRelatedPullRequests(req, function (validateErr) {
+                    if (validateErr) {
+                        log.error(validateErr);
+                    }
+                    done(validateErr, signed);
+                });
+            });
+        });
+    },
+
+    hasSignature: function (req, done) {
+        var argsScheme = Joi.object().keys({
+            user: Joi.string().required(),
+            userId: Joi.number().required(),
+            org: Joi.string(),
+            owner: Joi.string(),
+            repo: Joi.string(),
+            number: Joi.string()
+        }).and('repo', 'owner').xor('repo', 'org');
+        Joi.validate(req.args, argsScheme, { abortEarly: false, convert: false }, function (joiErr) {
+            if (joiErr) {
+                return done(joiErr);
+            }
+            req.args.owner = req.args.owner || req.args.org;
+            delete req.args.org;
+            cla.check(req.args, done);
+        });
+    },
+
+    terminateSignature: function (req, done) {
+        var self = this;
+        var schema = Joi.object().keys({
+            user: Joi.string().required(),
+            userId: Joi.number().required(),
+            endDate: Joi.string().isoDate().required(),
+            org: Joi.string(),
+            owner: Joi.string(),
+            repo: Joi.string(),
+            validatePRs: Joi.boolean()
+        }).and('repo', 'owner').xor('repo', 'org');
+        Joi.validate(req.args, schema, { abortEarly: false, convert: false }, function (joiErr) {
+            if (joiErr) {
+                return done(joiErr);
+            }
+            req.args.owner = req.args.owner || req.args.org;
+            delete req.args.org;
+            cla.terminate(req.args, function (err, dbCla) {
+                if (err) {
+                    log.error(err);
+                    return done(err);
+                }
+                if (!req.args.validatePRs) {
+                    return done(null, dbCla);
+                }
+                self.validateRelatedPullRequests(req, function (validateErr) {
+                    if (validateErr) {
+                        log.error(validateErr);
+                    }
+                    done(validateErr, dbCla);
+                });
+            });
+        });
+    },
+
+    validateRelatedPullRequests: function (req, done) {
+        var self = this;
+        self.getLinkedItem({
+            args: {
+                repo: req.args.repo,
+                owner: req.args.owner
+            }
+        }, function (error, item) {
+            if (error) {
+                return done(error);
+            }
+            req.args.token = item.token;
+            req.args.gist = item.gist;
+            if (item.sharedGist) {
+                self.validateSharedGistItems(req, function (err) {
+                    if (err) {
+                        log.error(err);
+                    }
+                });
+            } else if (item.org) {
+                req.args.org = item.org;
+                self.validateOrgPullRequests(req);
+            } else {
+                self.validatePullRequests(req);
+            }
+            done(null);
+        });
+    },
+
+    validate: function (req, done) {
+        var self = this;
+        var schema = Joi.object().keys({
+            org: Joi.string(),
+            owner: Joi.string(),
+            repo: Joi.string(),
+        }).and('repo', 'owner').xor('repo', 'org');
+        Joi.validate(req.args, schema, { abortEarly: false, convert: false, allowUnknown: true }, function (joiErr) {
+            if (joiErr) {
+                return done(joiErr);
+            }
+            req.args.owner = req.args.owner || req.args.org;
+            delete req.args.org;
+            self.validateRelatedPullRequests(req, done);
+        });
     }
 
     // updateDBData: function (req, done) {
