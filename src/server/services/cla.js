@@ -10,6 +10,7 @@ var logger = require('../services/logger');
 var orgService = require('../services/org');
 var repoService = require('../services/repo');
 var config = require('../../config');
+var github = require('./github');
 
 module.exports = function () {
     var claService;
@@ -61,8 +62,25 @@ module.exports = function () {
         return deferred.promise;
     };
 
+    var getGist = function (gist_url, token) {
+        var gistArray = gist_url.split('/');
+        var id = gistArray[gistArray.length - 1];
+        return github.call({
+            obj: 'gists',
+            fun: 'get',
+            arg: {
+                id: id
+            },
+            token: token
+        }).then(function (gist) {
+            if (gist.data.message) {
+                throw new Error(gist.data.message);
+            }
+            return gist;
+        });
+    };
 
-    var checkAll = function (users, args) {
+    var checkAll = function (users, repoId, orgId, sharedGist, gist_url, gist_version, onDates) {
         var deferred = q.defer();
         var all_signed = true;
         var promises = [];
@@ -72,19 +90,15 @@ module.exports = function () {
             unknown: []
         };
         if (!users) {
-            deferred.reject('There are no users to check :( ', args);
+            deferred.reject('There are no users to check :( ', users, repoId, orgId, sharedGist, gist_url, gist_version, onDates);
             return deferred.promise;
         }
         users.forEach(function (user) {
-            args.user = user.name;
             user_map.not_signed.push(user.name);
             if (!user.id) {
                 user_map.unknown.push(user.name);
             }
-            promises.push(claService.get(args, function (err, cla) {
-                if (err) {
-                    logger.warn(new Error(err).stack);
-                }
+            promises.push(getLastSignatureOnMultiDates(user.name, user.id, repoId, orgId, sharedGist, gist_url, gist_version, onDates).then(function (cla) {
                 if (!cla) {
                     all_signed = false;
                 } else {
@@ -105,73 +119,80 @@ module.exports = function () {
         return deferred.promise;
     };
 
-    var updateQuery = function (query, sharedGist) {
-        if (sharedGist) {
-            var addition = {
-                owner: undefined,
-                repo: undefined,
-                gist_url: query.gist_url,
-            };
-            if (query.gist_version) {
-                addition.gist_version = query.gist_version;
-            }
-            if (query.user) {
-                addition.user = query.user;
-            }
-            return {
-                $or: [query, addition]
-            };
+    var generateSharedGistQuery = function (gist_url, gist_version, user, userId) {
+        var sharedGistCondition = {
+            owner: undefined,
+            repo: undefined,
+            gist_url: gist_url,
+        };
+        if (gist_version) {
+            sharedGistCondition.gist_version = gist_version;
         }
-        return query;
+        if (user) {
+            sharedGistCondition.user = user;
+        }
+        if (userId) {
+            sharedGistCondition.userId = userId;
+        }
+        return sharedGistCondition;
     };
 
-    var check = function (repo, owner, gist_url, user, pr_number, token, repoId, orgId, sharedGist) {
+    var generateDateConditions = function (onDates) {
+        var dateConditions = [];
+        if (!Array.isArray(onDates) || onDates.length === 0) {
+            return dateConditions;
+        }
+        onDates.forEach(function (date) {
+            dateConditions = dateConditions.concat([{
+                created_at: { $lte: date },
+                end_at: { $gt: date }
+            }, {
+                created_at: { $lte: date },
+                end_at: undefined
+            }]);
+        });
+        return dateConditions;
+    };
+
+    var updateQuery = function (query, sharedGist, onDates) {
+        var queries = [query];
+        if (sharedGist) {
+            var shardGistQuery = generateSharedGistQuery(query.gist_url, query.gist_version, query.user, query.userId);
+            queries.push(shardGistQuery);
+        }
+        var dateConditions = generateDateConditions(onDates);
+        var newQuery = {
+            $or: []
+        };
+        if (dateConditions.length === 0) {
+            newQuery.$or = queries;
+            return newQuery;
+        };
+        queries.forEach(function (query) {
+            dateConditions.forEach(function (date) {
+                newQuery.$or.push(Object.assign({}, query, date));
+            });
+        });
+        return newQuery;
+    };
+
+    var getPR = function (owner, repo, number, token) {
         var deferred = q.defer();
-
-        getGistObject(gist_url, undefined, token).then(function (gist) {
-                if (!gist.history) {
-                    deferred.reject('No versions found for the given gist url');
-                    return;
-                }
-
-                var args = {
-                    user: user,
-                    gist: gist_url,
-                    gist_version: gist.history[0].version,
-                    repo: repo,
-                    owner: owner,
-                    sharedGist: sharedGist
-                };
-                args.repoId = repoId ? repoId : undefined;
-                args.orgId = orgId ? orgId : undefined;
-
-                if (user) {
-                    claService.get(args, function (error, cla) {
-                        deferred.resolve({
-                            signed: !!cla
-                        });
-                    });
-                } else if (pr_number) {
-                    args.number = pr_number;
-                    repoService.getPRCommitters(args, function (error, committers) {
-                        if (error) {
-                            logger.warn(new Error(error).stack);
-                        }
-                        checkAll(committers, args).then(
-                            function (result) {
-                                deferred.resolve(result);
-                            },
-                            function (error_msg) {
-                                deferred.reject(error_msg);
-                            }
-                        );
-                    });
-                }
+        github.call({
+            obj: 'pullRequests',
+            fun: 'get',
+            arg: {
+                owner: owner,
+                repo: repo,
+                number: number
             },
-            function (e) {
-                deferred.reject(e);
+            token: token
+        }, function (error, pullRequest) {
+            if (error) {
+                return deferred.reject(error);
             }
-        );
+            deferred.resolve(pullRequest);
+        });
         return deferred.promise;
     };
 
@@ -252,6 +273,42 @@ module.exports = function () {
         return deferred.promise;
     };
 
+    var getLastSignatureOnMultiDates = function (user, userId, repoId, orgId, sharedGist, gist_url, gist_version, date) {
+        if (!user || (!repoId && !orgId) || sharedGist === undefined || !gist_url || (date && !Array.isArray(date))) {
+            throw new Error('Not provide enough arguments for getSignature()');
+        }
+        var deferred = q.defer();
+        var query = {
+            user: user,
+            gist_url: gist_url,
+            org_cla: !!orgId
+        };
+        if (repoId) {
+            query.repoId = repoId;
+        }
+        if (orgId) {
+            query.ownerId = orgId;
+        }
+        if (userId) {
+            query.userId = userId;
+        }
+        if (gist_version) {
+            query.gist_version = gist_version;
+        }
+        query = updateQuery(query, sharedGist, date);
+        CLA.findOne(query, {}, {
+            sort: {
+                'created_at': -1
+            }
+        }, function (error, cla) {
+            if (error) {
+                return deferred.reject(error);
+            }
+            deferred.resolve(cla);
+        });
+        return deferred.promise;
+    };
+
     claService = {
         getGist: function (args, done) {
             var gist_url = args.gist ? args.gist.gist_url || args.gist.url || args.gist : undefined;
@@ -264,166 +321,146 @@ module.exports = function () {
             });
         },
 
-        get: function (args, done) {
-            var deferred = q.defer();
-            var query = {
-                user: args.user,
-                gist_url: args.gist,
-                gist_version: args.gist_version,
-                org_cla: false
-            };
-
-            var findCla = function () {
-                query = updateQuery(query, args.sharedGist);
-                CLA.findOne(query, function (err, cla) {
-                    deferred.resolve();
-                    if (typeof done === 'function') {
-                        done(err, cla);
-                    }
-                });
-            };
-            if (!args.repoId && !args.orgId) {
-                getRepo(args, function (error, repo) {
-                    if (error || !repo) {
-                        deferred.reject();
-                        if (typeof done === 'function') {
-                            done(error);
-                        }
-                    }
-                    query.repoId = repo.repoId;
-                    findCla();
-                });
-            } else if (args.repoId) {
-                query.repoId = args.repoId;
-                findCla();
-            } else {
-                query.ownerId = args.orgId;
-                query.org_cla = true;
-                findCla();
-            }
-            return deferred.promise;
-        },
-
-        //Get last signature of the user for given repository and gist url
+        /**
+         * Get the last signature of the current version cla at current moment or at a pull request moment
+         * Params:
+         *   user (mandatory)
+         *   owner (mandatory)
+         *   repo (optional)
+         *   number (optional)
+         */
         getLastSignature: function (args, done) {
-            var deferred = q.defer();
-            getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
-                var query = {
-                    user: args.user,
-                    gist_url: item.gist
-                };
-                if (item.orgId) {
-                    query.ownerId = item.orgId;
-                    query.org_cla = true;
-                } else if (item.repoId) {
-                    query.repoId = item.repoId;
+            return getLinkedItem(args.repo, args.owner).then(function (item) {
+                args.gist = item.gist;
+                if (!item.gist) {
+                    return 'null-cla';
                 }
-
-                // CLA.findOne({
-                //     '$query': query,
-                //     '$orderby': {
-                //         'created_at': -1
-                //     }
-                // }, function (err, cla) {
-                query = updateQuery(query, item.sharedGist);
-                CLA.findOne(query, {}, {
-                    sort: {
-                        'created_at': -1
+                return getGist(args.gist, item.token).then(function (gist) {
+                    args.gist_version = gist.data.history[0].version;
+                    args.onDates = [new Date()];
+                    if (args.number) {
+                        return getPR(args.owner, args.repo, args.number, item.token).then(function (pullRequest) {
+                            args.onDates.push(new Date(pullRequest.created_at));
+                            return args;
+                        });
                     }
-                }, function (err, cla) {
-                    if (!err && cla) {
-                        deferred.resolve(cla);
-                    }
-                    if (typeof done === 'function') {
-                        done(err, cla);
-                    }
+                    return args;
+                }).then(function (args) {
+                    return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, args.gist_version, args.onDates).then(function (cla) {
+                        return cla;
+                    });
                 });
-            }, function (err) {
-                deferred.reject(err);
-                if (typeof done === 'function') {
-                    done(err);
-                }
+            }).then(function (cla) {
+                return done(null, cla);
+            }).catch(function (error) {
+                return done(error);
             });
-            return deferred.promise;
         },
 
+        /**
+         * Check whether a user signed the current cla at current moment or at the pull request moment.
+         * Params:
+         *   user (mandatory)
+         *   owner (mandatory)
+         *   repo (optional)
+         *   number (optional)
+         */
+        checkUserSignature: function (args, done) {
+            var self = this;
+            return self.getLastSignature(args, function (error, cla) {
+                done(error, { signed: !!cla });
+            });
+        },
+
+        /**
+         * Check whether all committers signed the current cla at current moment or at the pull request moment.
+         * Params:
+         *   user (mandatory)
+         *   number (mandatory)
+         *   owner (mandatory)
+         *   repo (optional)
+         */
+        checkPullRequestSignatures: function (args, done) {
+            getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
+                args.gist = item.gist;
+                args.repoId = item.repoId;
+                args.orgId = item.orgId;
+                args.onDates = [new Date()];
+                if (!args.gist) {
+                    return done(null, {
+                        signed: true
+                    });
+                }
+                return getGist(args.gist, item.token).then(function (gist) {
+                    args.gist_version = gist.data.history[0].version;
+                    return getPR(args.owner, args.repo, args.number, item.token).then(function (pullRequest) {
+                        args.onDates.push(new Date(pullRequest.created_at));
+                        repoService.getPRCommitters(args, function (error, committers) {
+                            if (error) {
+                                logger.warn(new Error(error).stack);
+                            }
+                            return checkAll(committers, item.repoId, item.orgId, item.sharedGist, item.gist, args.gist_version, args.onDates).then(function (result) {
+                                done(null, result);
+                            }).catch(function (err) {
+                                done(err);
+                            });
+                        });
+                    });
+                });
+            }).catch(function (er) {
+                done(er);
+            });
+        },
 
         check: function (args, done) {
-            if (!args.gist || !args.token || args.sharedGist === undefined) {
-                getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
-                    args.gist = item.gist;
-                    args.token = item.token;
-                    if (item.orgId) {
-                        args.orgId = item.orgId;
-                    } else if (item.repoId) {
-                        args.orgId = undefined;
-                        args.repoId = item.repoId;
-                    }
-                    if (!item.gist) {
-                        done(null, true);
-                        return;
-                    }
-
-                    check(args.repo, args.owner, args.gist, args.user, args.number, item.token, args.repoId, args.orgId, item.sharedGist).then(function (result) {
-                        done(null, result.signed, result.user_map);
-                    }, function (err) {
-                        done(err);
-                    });
-
-                }, function (e) {
-                    done(e);
+            var self = this;
+            if (args.user) {
+                return self.checkUserSignature(args, function (error, result) {
+                    done(error, result.signed);
+                });
+            } else if (args.number) {
+                return self.checkPullRequestSignatures(args, function (error, result) {
+                    done(error, result.signed, result.user_map);
                 });
             } else {
-                check(args.repo, args.owner, args.gist, args.user, args.number, args.token, args.repoId, args.orgId, args.sharedGist).then(function (result) {
-                    done(null, result.signed, result.user_map);
-                }, function (err) {
-                    done(err);
-                });
+                return done('A user or a pull request number is required.');
             }
         },
 
         sign: function (args, done) {
             var self = this;
-            var org, repo;
-
-            getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
-                org = item.orgId ? item : undefined;
-                repo = item.orgId ? undefined : item;
-
-                var argsToCheck = args;
-                argsToCheck.orgId = item.orgId ? item.orgId : undefined;
-                argsToCheck.sharedGist = item.sharedGist;
-
-                self.check(argsToCheck, function (e, signed) {
-                    if (e || signed) {
-                        done(e);
-                        return;
-                    }
-
-                    getGistObject(item.gist, undefined, item.token).then(function (gist) {
-                        var argsToCreate = {};
-                        argsToCreate.gist = repo ? repo.gist : org.gist;
-                        argsToCreate.gist_version = gist.history[0].version;
-                        argsToCreate.user = args.user;
-                        argsToCreate.userId = args.userId;
-                        argsToCreate.custom_fields = args.custom_fields;
-                        if (!item.sharedGist) {
-                            argsToCreate.owner = repo ? repo.owner : org.org;
-                            argsToCreate.ownerId = repo ? repo.ownerId : org.orgId;
-                            argsToCreate.org_cla = org ? true : false;
-                            argsToCreate.repo = repo ? repo.repo : args.repo;
-                            argsToCreate.repoId = repo ? repo.repoId : undefined;
+            return getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
+                if (!item.gist) {
+                    throw new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
+                }
+                return getGist(item.gist, item.token).then(function (gist) {
+                    var onDates = [new Date()];
+                    var currentVersion = gist.data.history[0].version;
+                    return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates).then(function (cla) {
+                        if (cla) {
+                            throw new Error('You\'ve already signed the cla');
                         }
-
+                        var argsToCreate = {
+                            user: args.user,
+                            userId: args.userId,
+                            gist: item.gist,
+                            gist_version: currentVersion,
+                            custom_fields: args.custom_fields
+                        };
+                        if (!item.sharedGist) {
+                            argsToCreate.ownerId = item.orgId;
+                            argsToCreate.repoId = item.repoId;
+                            argsToCreate.org_cla = !!item.orgId;
+                            argsToCreate.owner = item.owner || item.org;
+                            argsToCreate.repo = item.repo;
+                        }
                         self.create(argsToCreate, function (error) {
-                            if (error) {
-                                done(error);
-                                return;
-                            }
                             done(error, 'done');
                         });
                     });
                 });
+            }).catch(function (error) {
+                done(error);
             });
         },
 
@@ -554,7 +591,12 @@ module.exports = function () {
                 selection.ownerId = args.orgId;
             }
             selection = updateQuery(selection, args.sharedGist);
-            CLA.find(selection, done);
+            CLA.find(selection, {}, {
+                sort: {
+                    user: 1,
+                    userId: 1
+                }
+            }, done);
         },
 
         create: function (args, done) {
@@ -570,10 +612,35 @@ module.exports = function () {
                 gist_url: args.gist,
                 gist_version: args.gist_version,
                 created_at: now,
+                end_at: undefined,
                 org_cla: args.org_cla,
                 custom_fields: args.custom_fields
             }, function (err, res) {
                 done(err, res);
+            });
+        },
+
+        terminate: function (args, done) {
+            return getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
+                if (!item.gist) {
+                    throw new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
+                }
+                return getGist(item.gist, item.token).then(function (gist) {
+                    var endDate = new Date(args.endDate);
+                    var onDates = [endDate];
+                    var currentVersion = gist.data.history[0].version;
+                    return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates).then(function (cla) {
+                        if (!cla) {
+                            throw new Error('No valid cla record');
+                        }
+                        cla.end_at = endDate;
+                        return cla.save().then(function (dbCla) {
+                            done(null, dbCla);
+                        });
+                    });
+                });
+            }).catch(function (error) {
+                done(error);
             });
         }
     };
