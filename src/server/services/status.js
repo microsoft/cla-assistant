@@ -70,7 +70,7 @@ var createStatus = function (args, context, description, done) {
 var findStatusToBeChanged = function (args, done) {
     getStatuses(args, function (error, response) {
         var statuses = '';
-        var description = args.signed ? 'Contributor License Agreement is signed.' : 'Contributor License Agreement is not signed yet.';
+        var description = args.signed ? 'All CLA requirements met.' : 'Contributor License Agreement is not signed yet.';
 
         var status = {
             context: 'license/cla',
@@ -125,7 +125,7 @@ var deleteStatus = function (args, done) {
     // Github api don't support delete status. We override previous one.
     args.state = 'success';
     args.noUrl = true;
-    var description = 'No need to sign Contributor License Agreement.';
+    var description = 'No Contributor License Agreement required.';
     var context = 'license/cla';
     createStatus(args, context, description, done);
 };

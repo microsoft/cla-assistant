@@ -1,10 +1,11 @@
 var url = require('./url');
 var github = require('./github');
 var log = require('../services/logger');
+var config = require('../../config');
 
 var commentText = function (signed, badgeUrl, claUrl, user_map, recheckUrl) {
     if (signed) {
-        return '[![CLA assistant check](' + badgeUrl + ')](' + claUrl + ') <br/>All committers have signed the CLA.';
+        return '[![CLA assistant check](' + badgeUrl + ')](' + claUrl + ') <br/>All CLA requirements met.';
     }
 
     var committersCount = 1;
@@ -14,13 +15,15 @@ var commentText = function (signed, badgeUrl, claUrl, user_map, recheckUrl) {
 
     var youAll = (committersCount > 1 ? 'you all' : 'you');
     var text = '[![CLA assistant check](' + badgeUrl + ')](' + claUrl + ') <br/>Thank you for your submission, we really appreciate it. Like many open source projects, we ask that ' + youAll + ' sign our [Contributor License Agreement](' + claUrl + ') before we can accept your contribution.<br/>';
-    if (committersCount > 1) {
-        text += '**' + user_map.signed.length + '** out of **' + (user_map.signed.length + user_map.not_signed.length) + '** committers have signed the CLA.<br/>';
+    if (config.server.feature_flag.always_show_unsigned_list === 'true' || committersCount > 1) {
+        if (committersCount > 1) {
+            text += '**' + user_map.signed.length + '** out of **' + (user_map.signed.length + user_map.not_signed.length) + '** committers have signed the CLA.<br/>';
+        }
         user_map.signed.forEach(function (signee) {
             text += '<br/>:white_check_mark: ' + signee;
         });
         user_map.not_signed.forEach(function (signee) {
-            text += '<br/>:x: ' + signee;
+            text += '<br/>:x: ' + signee + ' [sign now](' + claUrl + ')';
         });
         text += '<br/>';
     }

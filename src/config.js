@@ -87,6 +87,11 @@ module.exports = {
             admin_only: ['/api/cla/addSignature', '/api/cla/hasSignature', '/api/cla/terminateSignature', '/api/cla/validate', '/api/cla/getGist']
         },
 
+        feature_flag: {
+            close_comment: process.env.CLOSE_COMMENT,
+            always_show_unsigned_list: process.env.ALWAYS_SHOW_UNSIGNED_LIST
+        },
+
         static: [
             path.join(__dirname, 'bower'),
             path.join(__dirname, 'client')
@@ -116,7 +121,6 @@ module.exports = {
         passport: [
             path.join(__dirname, 'server', 'passports', '*.js')
         ]
-
     },
 
     client: {
