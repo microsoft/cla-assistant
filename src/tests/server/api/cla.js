@@ -830,7 +830,9 @@ describe('', function () {
                     gist: testData.repo_from_db.gist
                 }
             };
-            sinon.stub(cla_api, 'validatePullRequest', function () { });
+            sinon.stub(cla_api, 'validatePullRequest', function (args, callback) {
+                return callback(null, null);
+            });
         });
 
         afterEach(function () {
@@ -1164,7 +1166,7 @@ describe('', function () {
     });
 
     describe('cla:validatePullRequest', function () {
-        var args, resp;
+        var args;
         beforeEach(function () {
             args = {
                 repo: 'Hello-World',
@@ -1172,9 +1174,6 @@ describe('', function () {
                 sha: 'abcde',
                 number: 1,
                 token: 'token'
-            };
-            resp = {
-                cla: {}
             };
             resp.cla.check = {
                 gist: 'github/gist',
@@ -1185,27 +1184,44 @@ describe('', function () {
                     unknown: ['c']
                 }
             };
+            resp.cla.getLinkedItem = Object.assign({}, testData.repo_from_db);
+            error.cla.isClaRequired = null;
+            resp.cla.isClaRequired = true;
             sinon.stub(cla, 'check', function (args, cb) {
-                args.gist = resp.cla.check.gist;
                 cb(null, resp.cla.check.signed, resp.cla.check.user_map);
             });
-            sinon.stub(statusService, 'update', function (args) { });
-            sinon.stub(statusService, 'delete', function (args) { });
-            sinon.stub(prService, 'editComment', function (args) { });
-            sinon.stub(prService, 'deleteComment', function (args) { });
+            sinon.stub(cla, 'isClaRequired', function (args, cb) {
+                cb(error.cla.isClaRequired, resp.cla.isClaRequired);
+            });
+            sinon.stub(statusService, 'update', function (args, cb) {
+                return cb(null, null);
+            });
+            sinon.stub(statusService, 'updateForNullCla', function (args, cb) {
+                return cb(null, null);
+            });
+            sinon.stub(statusService, 'updateForClaNotRequired', function (args, cb) {
+                return cb(null, null);
+            });
+            sinon.stub(prService, 'editComment', function (args, cb) {
+                return cb(null, null);
+            });
+            sinon.stub(prService, 'deleteComment', function (args, cb) {
+                return cb(null, null);
+            });
         });
 
         afterEach(function () {
             cla.check.restore();
+            cla.isClaRequired.restore();
             statusService.update.restore();
-            statusService.delete.restore();
+            statusService.updateForNullCla.restore();
+            statusService.updateForClaNotRequired.restore();
             prService.editComment.restore();
             prService.deleteComment.restore();
         });
 
-        it('should update pull request status and update comment', function (it_done) {
-            cla_api.validatePullRequest(args);
-            setTimeout(function () {
+        it('should update status and edit comment when the repo is NOT linked with a null CLA and the pull request is significant', function (it_done) {
+            cla_api.validatePullRequest(args, function () {
                 assert(statusService.update.calledWithMatch({
                     signed: resp.cla.check.signed,
                     repo: 'Hello-World',
@@ -1224,12 +1240,24 @@ describe('', function () {
             });
         });
 
-        it('should delete comments when rechecking PRs of a repo with a null CLA', function (it_done) {
-            resp.cla.check.gist = undefined;
-            cla_api.validatePullRequest(args);
-            setTimeout(function (err) {
-                assert(statusService.delete.called);
+        it('should update status and delete comment when the repo linked with a null CLA', function (it_done) {
+            resp.cla.getLinkedItem.gist = undefined;
+            cla_api.validatePullRequest(args, function (err) {
+                assert(statusService.updateForNullCla.called);
                 assert(prService.deleteComment.called);
+                assert(!cla.isClaRequired.called);
+                assert(!cla.check.called);
+                it_done();
+            });
+        });
+
+        it('should update status and delete comment when the repo is NOT linked with a null CLA and the pull request is NOT significant', function (it_done) {
+            resp.cla.isClaRequired = false;
+            cla_api.validatePullRequest(args, function (err) {
+                assert(statusService.updateForClaNotRequired.called);
+                assert(prService.deleteComment.called);
+                assert(!cla.check.called);
+                assert(!statusService.updateForNullCla.called);
                 it_done();
             });
         });

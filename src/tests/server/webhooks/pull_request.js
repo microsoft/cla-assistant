@@ -273,6 +273,9 @@ describe('webhook pull request', function () {
 					gist: 'https://api.github.com/users/octocat/gists{/gist_id}'
 				},
 				getGHRepo: {}
+			},
+			cla: {
+				isClaRequired: true
 			}
 		};
 
@@ -281,7 +284,9 @@ describe('webhook pull request', function () {
 			assert(!args.user);
 			done(null, false);
 		});
-
+		sinon.stub(cla, 'isClaRequired', function (args, done) {
+			done(null, testRes.cla.isClaRequired);
+		});
 		sinon.stub(repoService, 'get', function (args, done) {
 			assert(args.repoId);
 			// assert(args.ownerId);
@@ -300,6 +305,7 @@ describe('webhook pull request', function () {
 		});
 
 		sinon.stub(pullRequest, 'badgeComment', function () {});
+		sinon.stub(pullRequest, 'deleteComment', function () { });
 		sinon.stub(status, 'update', function (args) {
 			assert(args.owner);
 			assert(args.repo);
@@ -307,6 +313,7 @@ describe('webhook pull request', function () {
 			assert(args.signed !== undefined);
 			assert(args.token);
 		});
+		sinon.stub(status, 'updateForClaNotRequired', function () { });
 
 		sinon.stub(orgService, 'get', function (args, done) {
 			assert(args.orgId);
@@ -331,12 +338,15 @@ describe('webhook pull request', function () {
 
 	afterEach(function () {
 		cla.check.restore();
+		cla.isClaRequired.restore();
 		orgService.get.restore();
 		pullRequest.badgeComment.restore();
+		pullRequest.deleteComment.restore();
 		repoService.get.restore();
 		repoService.getGHRepo.restore();
 		repoService.getPRCommitters.restore();
 		status.update.restore();
+		status.updateForClaNotRequired.restore();
 		logger.error.restore();
 		logger.warn.restore();
 		logger.info.restore();
@@ -526,6 +536,7 @@ describe('webhook pull request', function () {
 	});
 
 	it('should NOT try to update a repo that has a null CLA linked even the corresponding org has linked', function (it_done) {
+		this.timeout(100);
 		testRes.repoService.get.gist = null;
 		test_req.args.handleDelay = 0;
 		pull_request(test_req, res);
@@ -533,5 +544,16 @@ describe('webhook pull request', function () {
 			assert(!status.update.called);
 			it_done();
 		}, 8);
+	});
+
+	it('should update status and delete comment when a pull request is NOT significant', function (it_done) {
+		this.timeout(100);
+		testRes.cla.isClaRequired = false;
+		pull_request(test_req, res);
+		setTimeout(function () {
+			assert(status.updateForClaNotRequired.called);
+			assert(pullRequest.deleteComment.called);
+			it_done();
+		}, 10);
 	});
 });
