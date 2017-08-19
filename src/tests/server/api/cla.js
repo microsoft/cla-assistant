@@ -388,36 +388,22 @@ describe('', function () {
                     userId: 3
                 }
             };
-            // reqArgs.cla.getLinkedItem
-            resp.cla.getLinkedItem = resp.repoService.get;
-            reqArgs.cla.getLinkedItem = {
-                repo: 'Hello-World',
-                owner: 'octocat'
+            error.cla_api = {
+                validateRelatedPullRequests: null
             };
-
-            sinon.stub(statusService, 'update', function (args) {
-                assert(args.signed);
-            });
+            error.cla.sign = null;
             sinon.stub(cla, 'sign', function (args, cb) {
                 assert.deepEqual(args, expArgs.claSign);
-                cb(null, 'done');
+                cb(error.cla.sign, 'done');
             });
-            sinon.stub(cla, 'check', function (args, cb) {
-                args.gist = req.args.gist;
-                cb(null, true);
-            });
-            sinon.stub(prService, 'editComment', function () {});
-            sinon.stub(repo_service, 'getByOwner', function (owner, cb) {
-                cb(error.repoService.getByOwner, resp.repoService.getByOwner);
+            sinon.stub(cla_api, 'validateRelatedPullRequests', function (args, done) {
+                done(error.cla_api.validateRelatedPullRequests);
             });
         });
 
         afterEach(function () {
-            cla.check.restore();
             cla.sign.restore();
-            prService.editComment.restore();
-            statusService.update.restore();
-            repo_service.getByOwner.restore();
+            cla_api.validateRelatedPullRequests.restore();
         });
 
         it('should call cla service on sign', function (it_done) {
@@ -442,150 +428,32 @@ describe('', function () {
             });
         });
 
-        it('should update status of pull request created by user, who signed', function (it_done) {
+        it('should validate related pull requests created by user, who signed', function (it_done) {
             cla_api.sign(req, function (err, res) {
                 assert.ifError(err);
                 assert.ok(res);
-                assert(statusService.update.called);
+                assert(cla_api.validateRelatedPullRequests.called);
 
                 it_done();
             });
         });
 
-        it('should update status of pull request using token of linked org', function (it_done) {
-            resp.repoService.get = null;
-            resp.cla.getLinkedItem = resp.orgService.get;
-
-            this.timeout(100);
+        it('should send error when sign cla failed', function (it_done) {
+            error.cla.sign = new Error('Sign cla failed');
             cla_api.sign(req, function (err, res) {
-                assert.ifError(err);
-                assert.ok(res);
-                setTimeout(function () {
-                    assert(statusService.update.called);
-                    it_done();
-                }, 50);
-            });
-        });
-
-        it('should update status of all repos of the org', function (it_done) {
-            resp.repoService.get = null;
-            resp.cla.getLinkedItem = resp.orgService.get;
-            global.config.server.github.timeToWait = 10;
-            resp.repoService.getByOwner = [];
-
-            this.timeout(100);
-            cla_api.sign(req, function (err, res) {
-                assert.ifError(err);
-                assert.ok(res);
-                setTimeout(function () {
-                    assert.equal(statusService.update.callCount, 4);
-                    it_done();
-                }, 50);
-            });
-        });
-
-        it('should update status of all repos of the org slowing down', function (it_done) {
-            this.timeout(600);
-            resp.repoService.get = null;
-            resp.cla.getLinkedItem = resp.orgService.get;
-            resp.repoService.getByOwner = [];
-            console.log(resp.github.callRepos.length);
-            for (var index = 0; index < 28; index++) {
-                resp.github.callRepos.push({
-                    id: 'test_' + index,
-                    owner: {
-                        login: 'org'
-                    }
-                });
-            }
-            console.log(resp.github.callRepos.length);
-            global.config.server.github.timeToWait = 10;
-
-            cla_api.sign(req, function (err, res) {
-                assert.ifError(err);
-                assert.ok(res);
-                setTimeout(function () {
-                    assert.equal(statusService.update.callCount, 10 * resp.github.callPullRequest.length);
-                }, 100);
-                // 10 * timeToWait delay each 10th block
-                setTimeout(function () {
-                    assert.equal(statusService.update.callCount, 20 * resp.github.callPullRequest.length);
-                }, 300);
-                setTimeout(function () {
-                    assert.equal(statusService.update.callCount, 30 * resp.github.callPullRequest.length);
-                    global.config.server.github.timeToWait = 0;
-                    it_done();
-                }, 550);
-            });
-        });
-
-        it('should update status of all open pull requests for the repo', function (it_done) {
-            cla_api.sign(req, function (err, res) {
-                assert.ifError(err);
-                assert.ok(res);
-                assert.equal(statusService.update.callCount, 2);
-                assert(github.call.calledWithMatch({
-                    obj: 'pullRequests',
-                    fun: 'getAll'
-                }));
-                assert(prService.editComment.called);
-
+                assert.equal(err, error.cla.sign);
+                assert(!cla_api.validateRelatedPullRequests.called);
                 it_done();
             });
         });
 
-        it('should comment with user_map if it is given', function (it_done) {
-            cla.check.restore();
-            prService.editComment.restore();
-
-            sinon.stub(cla, 'check', function (args, cb) {
-                args.gist = req.args.gist;
-                cb(null, true, {
-                    signed: [],
-                    not_signed: []
-                });
-            });
-            sinon.stub(prService, 'editComment', function (args) {
-                assert(args.user_map.signed);
-            });
-
+        it('should log the error when validate related pull requests failed', function (it_done) {
+            error.cla.sign = null;
+            error.cla_api.validateRelatedPullRequests = new Error('Validate related pull requests failed');
             cla_api.sign(req, function (err, res) {
-                assert.ifError(err);
-                assert.ok(res);
-                assert(github.call.calledWithMatch({
-                    obj: 'pullRequests',
-                    fun: 'getAll'
-                }));
-                assert(statusService.update.called);
-                assert(prService.editComment.called);
-                it_done();
-            });
-        });
-
-        it('should handle repos without open pull requests', function (it_done) {
-            resp.github.callPullRequest = [];
-
-            cla_api.sign(req, function (err, res) {
-                assert.ifError(err);
-                assert.ok(res);
-                assert(github.call.calledWithMatch({
-                    obj: 'pullRequests',
-                    fun: 'getAll'
-                }));
-                assert(!statusService.update.called);
-
-                it_done();
-            });
-        });
-
-        it('should call validateSharedGistItems to update status of all repos and orgs with the same shared gist', function (it_done) {
-            sinon.stub(cla_api, 'validateSharedGistItems', function (args, done) {
-                done();
-            });
-            resp.cla.getLinkedItem.sharedGist = true;
-            cla_api.sign(req, function (error) {
-                assert(cla_api.validateSharedGistItems.called);
-                cla_api.validateSharedGistItems.restore();
+                assert(cla_api.validateRelatedPullRequests.called);
+                assert(log.error.calledWith(error.cla_api.validateRelatedPullRequests));
+                assert.equal(err, error.cla_api.validateRelatedPullRequests);
                 it_done();
             });
         });
@@ -952,7 +820,7 @@ describe('', function () {
         });
     });
 
-    describe('cla: validatePullRequests', function () {
+    describe('cla:validatePullRequests', function () {
         var req;
         beforeEach(function () {
             req = {
@@ -963,38 +831,21 @@ describe('', function () {
                     gist: testData.repo_from_db.gist
                 }
             };
-            sinon.stub(statusService, 'update', function (args) {
-                assert(args.signed);
-                assert(args.token);
-                assert(args.sha);
-            });
-            sinon.stub(statusService, 'delete').returns(null);
-            sinon.stub(cla, 'check', function (args, cb) {
-                args.gist = req.args.gist;
-                cb(null, true);
-            });
-            sinon.stub(prService, 'editComment', function () {});
-            sinon.stub(prService, 'deleteComment', function () {});
+            sinon.stub(cla_api, 'validatePullRequest', function () { });
         });
 
         afterEach(function () {
-            cla.check.restore();
-            statusService.update.restore();
-            statusService.delete.restore();
-            prService.editComment.restore();
-            prService.deleteComment.restore();
+            cla_api.validatePullRequest.restore();
         });
-        it('should update all open pull requests', function (it_done) {
 
+        it('should update all open pull requests', function (it_done) {
             cla_api.validatePullRequests(req, function (err) {
                 assert.ifError(err);
-                assert.equal(statusService.update.callCount, 2);
+                assert.equal(cla_api.validatePullRequest.callCount, 2);
                 assert(github.call.calledWithMatch({
                     obj: 'pullRequests',
                     fun: 'getAll'
                 }));
-                assert(prService.editComment.called);
-
                 it_done();
             });
         });
@@ -1006,36 +857,30 @@ describe('', function () {
             };
             cla_api.validatePullRequests(req, function (err) {
                 assert.ifError(err);
-                assert.equal(statusService.update.callCount, 2);
+                assert.equal(cla_api.validatePullRequest.callCount, 2);
                 assert(github.call.calledWithMatch({
                     obj: 'pullRequests',
                     fun: 'getAll'
                 }));
-                assert(prService.editComment.called);
-
                 it_done();
             });
         });
 
-        it('should load all PRs if there are more to load', function () {
-
-        });
-
-        it('should delete comments when rechecking PRs of a repo with a null CLA', function (it_done) {
-            cla.check.restore();
-            sinon.stub(cla, 'check', function (args, cb) {
-                args.gist = null;
-                cb(null, true);
-            });
-            cla_api.validatePullRequests(req, function (err) {
-                assert(prService.deleteComment.called);
-                assert(statusService.delete.called);
+        it('should handle repos without open pull requests', function (it_done) {
+            resp.github.callPullRequest = [];
+            cla_api.validatePullRequests(req, function (err, res) {
+                assert.ifError(err);
+                assert(github.call.calledWithMatch({
+                    obj: 'pullRequests',
+                    fun: 'getAll'
+                }));
+                assert(!cla_api.validatePullRequest.called);
                 it_done();
             });
         });
     });
 
-    describe('cla: validateOrgPullRequests', function () {
+    describe('cla:validateOrgPullRequests', function () {
         var req;
         beforeEach(function () {
             req = {
@@ -1091,12 +936,17 @@ describe('', function () {
 
         it('should validate repos that is not in the excluded list and don\'t have overridden cla', function (it_done) {
             resp.repoService.getByOwner = [];
+            resp.github.callRepos.push({
+                id: 2,
+                repo: 'Hello-World-2',
+                owner: 'octocat'
+            });
             resp.orgService.get.isRepoExcluded = function () {
                 return false;
             };
             cla_api.validateOrgPullRequests(req, function () {
                 setTimeout(function() {
-                    assert(cla_api.validatePullRequests.called);
+                    assert.equal(cla_api.validatePullRequests.callCount, 2);
                     it_done();
                 });
             });
@@ -1108,6 +958,40 @@ describe('', function () {
                 assert(!!err);
                 assert(!cla_api.validatePullRequests.called);
                 it_done();
+            });
+        });
+
+        it('should validate pull requests of all repos of the org slowing down', function (it_done) {
+            this.timeout(600);
+            resp.repoService.getByOwner = [];
+            resp.github.callRepos = [];
+            console.log(resp.github.callRepos.length);
+            for (var index = 0; index < 30; index++) {
+                resp.github.callRepos.push({
+                    id: 'test_' + index,
+                    owner: {
+                        login: 'org'
+                    }
+                });
+            }
+            console.log(resp.github.callRepos.length);
+            global.config.server.github.timeToWait = 10;
+
+            cla_api.validateOrgPullRequests(req, function (err, res) {
+                assert.ifError(err);
+                assert.ok(res);
+                setTimeout(function () {
+                    assert.equal(cla_api.validatePullRequests.callCount, 10);
+                }, 100);
+                // 10 * timeToWait delay each 10th block
+                setTimeout(function () {
+                    assert.equal(cla_api.validatePullRequests.callCount, 20);
+                }, 300);
+                setTimeout(function () {
+                    assert.equal(cla_api.validatePullRequests.callCount, 30);
+                    global.config.server.github.timeToWait = 0;
+                    it_done();
+                }, 550);
             });
         });
     });
@@ -1129,7 +1013,7 @@ describe('', function () {
         });
     });
 
-    describe('cla: validateSharedGistItems', function () {
+    describe('cla:validateSharedGistItems', function () {
         var req;
 
         beforeEach(function () {
@@ -1209,6 +1093,183 @@ describe('', function () {
             error.orgService.getOrgWithSharedGist = 'Error: get shared gist org failed';
             cla_api.validateSharedGistItems(req, function (err) {
                 assert(log.error.calledWith(error.orgService.getOrgWithSharedGist));
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:validateRelatedPullRequests', function () {
+        beforeEach(function () {
+            req = {
+                args: {
+                    repo: 'Hello-World',
+                    owner: 'octocat'
+                }
+            };
+            error.cla_api = {};
+            sinon.stub(cla_api, 'validateSharedGistItems', function (req, cb) {
+                cb(error.cla_api.validateSharedGistItems);
+            });
+            sinon.stub(cla_api, 'validateOrgPullRequests', function (req) { });
+            sinon.stub(cla_api, 'validatePullRequests', function (req) { });
+        });
+
+        afterEach(function () {
+            error.cla_api = {};
+            cla_api.validateSharedGistItems.restore();
+            cla_api.validateOrgPullRequests.restore();
+            cla_api.validatePullRequests.restore();
+        });
+
+        it('should validate all pull requests of repos and orgs shared the same gist', function (it_done) {
+            resp.cla.getLinkedItem = {
+                sharedGist: true,
+                token: 'token'
+            };
+            cla_api.validateRelatedPullRequests(req, function (err, res) {
+                assert.ifError(err);
+                assert(cla_api.validateSharedGistItems.calledWithMatch({
+                    args: {
+                        token: resp.cla.getLinkedItem.token
+                    }
+                }));
+                it_done();
+            });
+        });
+
+        it('should validate org pull requests using token of linked org', function (it_done) {
+            resp.cla.getLinkedItem = resp.orgService.get;
+            cla_api.validateRelatedPullRequests(req, function (err, res) {
+                assert.ifError(err);
+                assert(cla_api.validateOrgPullRequests.calledWithMatch({
+                    args: {
+                        token: resp.orgService.get.token
+                    }
+                }));
+                it_done();
+            });
+        });
+
+        it('should validate repo pull requests using token of linked repo', function (it_done) {
+            resp.cla.getLinkedItem = resp.repoService.get;
+            cla_api.validateRelatedPullRequests(req, function (err, res) {
+                assert.ifError(err);
+                assert(cla_api.validatePullRequests.calledWithMatch({
+                    args: {
+                        token: resp.orgService.get.token
+                    }
+                }));
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:validatePullRequest', function () {
+        var args, resp;
+        beforeEach(function () {
+            args = {
+                repo: 'Hello-World',
+                owner: 'octocat',
+                sha: 'abcde',
+                number: 1,
+                token: 'token'
+            };
+            resp = {
+                cla: {}
+            };
+            resp.cla.check = {
+                gist: 'github/gist',
+                signed: false,
+                user_map: {
+                    signed: ['a'],
+                    not_signed: ['b'],
+                    unknown: ['c']
+                }
+            };
+            sinon.stub(cla, 'check', function (args, cb) {
+                args.gist = resp.cla.check.gist;
+                cb(null, resp.cla.check.signed, resp.cla.check.user_map);
+            });
+            sinon.stub(statusService, 'update', function (args) { });
+            sinon.stub(statusService, 'delete', function (args) { });
+            sinon.stub(prService, 'editComment', function (args) { });
+            sinon.stub(prService, 'deleteComment', function (args) { });
+        });
+
+        afterEach(function () {
+            cla.check.restore();
+            statusService.update.restore();
+            statusService.delete.restore();
+            prService.editComment.restore();
+            prService.deleteComment.restore();
+        });
+
+        it('should update pull request status and update comment', function (it_done) {
+            cla_api.validatePullRequest(args);
+            setTimeout(function () {
+                assert(statusService.update.calledWithMatch({
+                    signed: resp.cla.check.signed,
+                    repo: 'Hello-World',
+                    owner: 'octocat',
+                    sha: 'abcde',
+                    number: 1
+                }));
+                assert(prService.editComment.calledWithMatch({
+                    repo: 'Hello-World',
+                    owner: 'octocat',
+                    number: 1,
+                    signed: resp.cla.check.signed,
+                    user_map: resp.cla.check.user_map
+                }));
+                it_done();
+            });
+        });
+
+        it('should delete comments when rechecking PRs of a repo with a null CLA', function (it_done) {
+            resp.cla.check.gist = undefined;
+            cla_api.validatePullRequest(args);
+            setTimeout(function (err) {
+                assert(statusService.delete.called);
+                assert(prService.deleteComment.called);
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:validate', function () {
+        var req;
+        beforeEach(function () {
+            req = {
+                args: {
+                    repo: 'Hello-World',
+                    owner: 'octocat'
+                }
+            };
+            error.cla_api = {
+                validateRelatedPullRequests: null
+            };
+            sinon.stub(cla_api, 'validateRelatedPullRequests', function (args, done) {
+                done(error.cla_api.validateRelatedPullRequests);
+            });
+        });
+
+        afterEach(function () {
+            cla_api.validateRelatedPullRequests.restore();
+        });
+
+        it('should call validateRelatedPullRequests() to validate related pull requests', function (it_done) {
+            cla_api.validate(req, function (err) {
+                assert(cla_api.validateRelatedPullRequests.called);
+                assert.ifError(err);
+                it_done();
+            });
+        });
+
+        it('should return joi validation error when repo is not given', function (it_done) {
+            req.args.repo = undefined;
+            cla_api.validate(req, function (err) {
+                assert(err);
+                assert(!cla_api.validateRelatedPullRequests.called);
                 it_done();
             });
         });
@@ -1421,45 +1482,6 @@ describe('', function () {
                 assert(cla.terminate.called);
                 assert(cla_api.validateRelatedPullRequests.called);
                 assert(log.error.called);
-                it_done();
-            });
-        });
-    });
-
-    describe('cla:validate', function () {
-        var req;
-        beforeEach(function () {
-            req = {
-                args: {
-                    repo: 'Hello-World',
-                    owner: 'octocat'
-                }
-            };
-            error.cla_api = {
-                validateRelatedPullRequests: null
-            };
-            sinon.stub(cla_api, 'validateRelatedPullRequests', function (args, done) {
-                done(error.cla_api.validateRelatedPullRequests);
-            });
-        });
-
-        afterEach(function () {
-            cla_api.validateRelatedPullRequests.restore();
-        });
-
-        it('should call validateRelatedPullRequests() to validate related pull requests', function (it_done) {
-            cla_api.validate(req, function (err) {
-                assert(cla_api.validateRelatedPullRequests.called);
-                assert.ifError(err);
-                it_done();
-            });
-        });
-
-        it('should return joi validation error when repo is not given', function (it_done) {
-            req.args.repo = undefined;
-            cla_api.validate(req, function (err) {
-                assert(err);
-                assert(!cla_api.validateRelatedPullRequests.called);
                 it_done();
             });
         });
