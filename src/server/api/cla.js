@@ -330,28 +330,47 @@ module.exports = {
     // token (optional)
     validatePullRequest: function (args, done) {
         args.token = args.token ? args.token : token;
-        cla.check(args, function (cla_err, all_signed, user_map) {
-            if (cla_err) {
-                log.error(cla_err);
+        cla.getLinkedItem(args, function (error, item) {
+            if (error) {
+                return log.error(error);
             }
-            args.signed = all_signed;
-            if (args.gist) {
-                status.update(args);
-                prService.editComment({
-                    repo: args.repo,
-                    owner: args.owner,
-                    number: args.number,
-                    signed: args.signed,
-                    user_map: user_map
-                });
-            } else {
-                status.delete(args);
+            if (!item.gist) {
+                status.updateForNullCla(args);
                 prService.deleteComment({
                     repo: args.repo,
                     owner: args.owner,
                     number: args.number
                 });
+                return;
             }
+            cla.isClaRequired(args, function (error, isClaRequired) {
+                if (error) {
+                    return log.error(error);
+                }
+                if (!isClaRequired) {
+                    status.updateForClaNotRequired(args);
+                    prService.deleteComment({
+                        repo: args.repo,
+                        owner: args.owner,
+                        number: args.number
+                    });
+                    return;
+                }
+                cla.check(args, function (cla_err, all_signed, user_map) {
+                    if (cla_err) {
+                        log.error(cla_err);
+                    }
+                    args.signed = all_signed;
+                    status.update(args);
+                    prService.editComment({
+                        repo: args.repo,
+                        owner: args.owner,
+                        number: args.number,
+                        signed: args.signed,
+                        user_map: user_map
+                    });
+                });
+            });
         });
     },
 
