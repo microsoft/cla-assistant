@@ -77,8 +77,9 @@ module.exports = function(config) {
 
         // to avoid DISCONNECTED messages
         browserDisconnectTimeout: 10000, // default 2000
-        browserDisconnectTolerance: 1, // default 0
-        browserNoActivityTimeout: 60000, //default 10000
+        browserDisconnectTolerance: 5, // default 0
+        browserNoActivityTimeout: 100000, //default 10000
+        retryLimit: 5, //default 2
 
         // enable / disable colors in the output (reporters and logs)
         colors: true,
