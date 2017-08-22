@@ -386,8 +386,8 @@ describe('repo:getPRCommitters', function () {
                 obj: 'pullRequests',
                 fun: 'getCommits'
             }));
+            it_done();
         });
-        it_done();
     });
 
     it('should handle error', function (it_done) {
@@ -400,7 +400,8 @@ describe('repo:getPRCommitters', function () {
             owner: 'owner',
             number: '1'
         };
-
+        this.timeout(1500);
+        repo.timesToRetryGitHubCall = 1;
         repo.getPRCommitters(arg, function (err) {
             assert(err);
             assert(Repo.findOne.called);
@@ -408,9 +409,8 @@ describe('repo:getPRCommitters', function () {
                 obj: 'pullRequests',
                 fun: 'getCommits'
             }));
+            it_done();
         });
-
-        it_done();
     });
 
     it('should retry api call if gitHub returns "Not Found"', function (it_done) {
@@ -514,9 +514,9 @@ describe('repo:getPRCommitters', function () {
                 obj: 'pullRequests',
                 fun: 'getCommits'
             }));
+            it_done();
         });
 
-        it_done();
     });
 
     it('should update db entry if repo was transferred', function (it_done) {
