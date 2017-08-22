@@ -21,7 +21,7 @@ module.exports = {
             if (!err && !data) {
                 err = new Error('No data returned');
             }
-            if (err.code === 404) {
+            if (err && err.code === 404) {
                 log.info('You do not have authorization for ' + repo + ' repository.');
             }
             if (err) {
@@ -63,15 +63,15 @@ module.exports = {
                 username: username
             },
             token: token
-        }, function (error, data) {
-            if (!error && !data) {
+        }, function (err, data) {
+            if (!err && !data) {
                 err = new Error('No data returned');
             }
-            if (error.code === 404) {
+            if (err && err.code === 404) {
                 log.info('You do not have authorization for ' + org + ' organization.');
             }
-            if (error) {
-                return deferred.reject(error);
+            if (err) {
+                return deferred.reject(err);
             }
             if (data.role !== 'admin') {
                 return deferred.reject('You are not an admin of this org');
