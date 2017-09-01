@@ -156,6 +156,7 @@ module.exports = {
         });
         Joi.validate(req.args, schema, { abortEarly: false }, function (joiErr) {
             if (joiErr) {
+                joiErr.code = 400;
                 return done(joiErr);
             }
             if (req.user && req.user.token && req.args.gist) {
@@ -529,6 +530,7 @@ module.exports = {
         }).and('repo', 'owner').xor('repo', 'org');
         Joi.validate(req.args, schema, { abortEarly: false, convert: false }, function (joiErr) {
             if (joiErr) {
+                joiErr.code = 400;
                 return done(joiErr);
             }
             req.args.owner = req.args.owner || req.args.org;
@@ -562,6 +564,7 @@ module.exports = {
         }).and('repo', 'owner').xor('repo', 'org');
         Joi.validate(req.args, argsScheme, { abortEarly: false, convert: false }, function (joiErr) {
             if (joiErr) {
+                joiErr.code = 400;
                 return done(joiErr);
             }
             req.args.owner = req.args.owner || req.args.org;
@@ -583,6 +586,7 @@ module.exports = {
         }).and('repo', 'owner').xor('repo', 'org');
         Joi.validate(req.args, schema, { abortEarly: false, convert: false }, function (joiErr) {
             if (joiErr) {
+                joiErr.code = 400;
                 return done(joiErr);
             }
             req.args.owner = req.args.owner || req.args.org;
@@ -643,6 +647,7 @@ module.exports = {
         }).and('repo', 'owner').xor('repo', 'org');
         Joi.validate(req.args, schema, { abortEarly: false, convert: false, allowUnknown: true }, function (joiErr) {
             if (joiErr) {
+                joiErr.code = 400;
                 return done(joiErr);
             }
             req.args.owner = req.args.owner || req.args.org;

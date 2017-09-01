@@ -471,7 +471,7 @@ module.exports = function () {
             return getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
                 if (!item.gist) {
                     var nullClaErr = new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
-                    nullClaErr.code = 400;
+                    nullClaErr.code = 200;
                     throw nullClaErr;
                 }
                 return getGist(item.gist, item.token).then(function (gist) {
@@ -480,7 +480,7 @@ module.exports = function () {
                     return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates).then(function (cla) {
                         if (cla) {
                             var signedErr = new Error('You\'ve already signed the cla');
-                            signedErr.code = 400;
+                            signedErr.code = 200;
                             throw signedErr;
                         }
                         var argsToCreate = {
@@ -667,7 +667,7 @@ module.exports = function () {
             return getLinkedItem(args.repo, args.owner, args.token).then(function (item) {
                 if (!item.gist) {
                     var nullClaErr = new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
-                    nullClaErr.code = 400;
+                    nullClaErr.code = 200;
                     throw nullClaErr;
                 }
                 return getGist(item.gist, item.token).then(function (gist) {
@@ -677,7 +677,7 @@ module.exports = function () {
                     return getLastSignatureOnMultiDates(args.user, args.userId, item.repoId, item.orgId, item.sharedGist, item.gist, currentVersion, onDates).then(function (cla) {
                         if (!cla) {
                             var noRecordErr = new Error('No valid cla record');
-                            noRecordErr.code = 400;
+                            noRecordErr.code = 200;
                             throw noRecordErr;
                         }
                         cla.end_at = endDate;
