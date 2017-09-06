@@ -38,6 +38,7 @@
     "json-stable-stringify": "^1.0.1",
     "karma": "^1.1.0",
     "karma-mocha": "^1.1.1",
+    "lodash": "^4.17.4",
     "memory-cache": "^0.1.6",
     "merge": "^1.2.0",
     "mongoose": "^4.11.14",
