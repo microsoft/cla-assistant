@@ -336,39 +336,40 @@ module.exports = {
                 return log.error(error);
             }
             if (!item.gist) {
-                status.updateForNullCla(args);
-                prService.deleteComment({
-                    repo: args.repo,
-                    owner: args.owner,
-                    number: args.number
+                return status.updateForNullCla(args, function () {
+                    prService.deleteComment({
+                        repo: args.repo,
+                        owner: args.owner,
+                        number: args.number
+                    }, done);
                 });
-                return;
             }
             cla.isClaRequired(args, function (error, isClaRequired) {
                 if (error) {
                     return log.error(error);
                 }
                 if (!isClaRequired) {
-                    status.updateForClaNotRequired(args);
-                    prService.deleteComment({
-                        repo: args.repo,
-                        owner: args.owner,
-                        number: args.number
+                    return status.updateForClaNotRequired(args, function () {
+                        prService.deleteComment({
+                            repo: args.repo,
+                            owner: args.owner,
+                            number: args.number
+                        }, done);
                     });
-                    return;
                 }
                 cla.check(args, function (cla_err, all_signed, user_map) {
                     if (cla_err) {
                         log.error(cla_err);
                     }
                     args.signed = all_signed;
-                    status.update(args);
-                    prService.editComment({
-                        repo: args.repo,
-                        owner: args.owner,
-                        number: args.number,
-                        signed: args.signed,
-                        user_map: user_map
+                    return status.update(args, function () {
+                        prService.editComment({
+                            repo: args.repo,
+                            owner: args.owner,
+                            number: args.number,
+                            signed: args.signed,
+                            user_map: user_map
+                        }, done);
                     });
                 });
             });
@@ -379,6 +380,12 @@ module.exports = {
         var self = this;
         var pullRequests = [];
         var token = req.args.token ? req.args.token : req.user.token;
+
+        function doneIfNeed(err) {
+            if (typeof done === 'function') {
+                done(err);
+            }
+        }
 
         function collectData(err, res, meta) {
             if (err) {
@@ -398,20 +405,21 @@ module.exports = {
 
         function validateData(err) {
             if (pullRequests.length > 0 && !err) {
-                pullRequests.forEach(function (pullRequest) {
-                    var status_args = {
-                        repo: req.args.repo,
-                        owner: req.args.owner,
-                        sha: pullRequest.head.sha,
-                        token: token
-                    };
-                    status_args.number = pullRequest.number;
+                async.series(pullRequests.map(function (pullRequest) {
+                    return function (callback) {
+                        var status_args = {
+                            repo: req.args.repo,
+                            owner: req.args.owner,
+                            sha: pullRequest.head.sha,
+                            token: token
+                        };
+                        status_args.number = pullRequest.number;
 
-                    self.validatePullRequest(status_args);
-                });
-            }
-            if (typeof done === 'function') {
-                done(err);
+                        self.validatePullRequest(status_args, callback);
+                    };
+                }), doneIfNeed);
+            } else {
+                doneIfNeed(null);
             }
         }
 

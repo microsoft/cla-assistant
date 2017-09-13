@@ -3,6 +3,7 @@ var q = require('q');
 var cache = require('memory-cache');
 var config = require('../../config');
 var GitHubApi = require('github');
+var logger = require('./logger');
 
 // var githubApi;
 
@@ -25,6 +26,8 @@ function callGithub(github, obj, fun, arg, stringArgs, done) {
                 meta: res && res.meta ? res.meta : undefined
             }, 60000 * config.server.cache_time);
         }
+
+        logger.info({ obj: obj, fun: fun, arg: arg, meta: res ? res.meta : undefined });
 
         if (typeof done === 'function') {
             done(err, res);
