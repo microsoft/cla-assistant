@@ -9,6 +9,7 @@ global.config = require('../../../config');
 
 // models
 var Repo = require('../../../server/documents/repo').Repo;
+var PullRequest = require('../../../server/documents/pullRequest').PullRequest;
 
 //services
 var github = require('../../../server/services/github');
@@ -18,6 +19,7 @@ var org_service = require('../../../server/services/org');
 var statusService = require('../../../server/services/status');
 var prService = require('../../../server/services/pullRequest');
 var log = require('../../../server/services/logger');
+var prStore = require('../../../server/services/pullRequestStore');
 
 // Test data
 var testData = require('../testData').data;
@@ -62,11 +64,39 @@ describe('', function () {
                     number: 1,
                     head: {
                         sha: 'sha1'
+                    },
+                    user: {
+                        login: "submitter",
+                        id: 12345678
+                    },
+                    created_at: "2017-09-08T16:27:34Z",
+                    base: {
+                        repo: {
+                            id: 13579111,
+                            name: "repo",
+                            owner: {
+                                login: "owner"
+                            }
+                        }
                     }
                 }, {
                     number: 2,
                     head: {
                         sha: 'sha2'
+                    },
+                    user: {
+                        login: "submitter",
+                        id: 12345678
+                    },
+                    created_at: "2017-09-08T16:27:34Z",
+                    base: {
+                        repo: {
+                            id: 13579111,
+                            name: "repo",
+                            owner: {
+                                login: "owner"
+                            }
+                        }
                     }
                 }],
                 callMarkdown: {
@@ -834,10 +864,14 @@ describe('', function () {
             sinon.stub(cla_api, 'validatePullRequest', function (args, callback) {
                 return callback(null, null);
             });
+            sinon.stub(prStore, 'storeIfNotExist', function (args, callback) {
+                return callback();
+            });
         });
 
         afterEach(function () {
             cla_api.validatePullRequest.restore();
+            prStore.storeIfNotExist.restore();
         });
 
         it('should update all open pull requests', function (it_done) {

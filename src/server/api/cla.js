@@ -11,6 +11,7 @@ var repoService = require('../services/repo');
 var orgService = require('../services/org');
 var prService = require('../services/pullRequest');
 var log = require('../services/logger');
+var prStore = require('../services/pullRequestStore');
 
 var config = require('../../config');
 
@@ -414,8 +415,16 @@ module.exports = {
                             token: token
                         };
                         status_args.number = pullRequest.number;
-
-                        self.validatePullRequest(status_args, callback);
+                        self.validatePullRequest(status_args, function (err) {
+                            // TODO: Temporary code to populate pull request cache.
+                            var prInfo = prStore.generatePullRequestInfo(pullRequest);
+                            prStore.storeIfNotExist(prInfo, function (storeErr) {
+                                if (storeErr) {
+                                    log.error({ err: err, name: 'Store pull request after sign fail.' });
+                                }
+                                callback(err);
+                            });
+                        });
                     };
                 }), doneIfNeed);
             } else {
