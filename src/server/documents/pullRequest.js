@@ -12,9 +12,9 @@ var pullRequestSchema = mongoose.Schema({
 });
 
 pullRequestSchema.index({
-    userId: String,
     repoId: String,
-    number: String
+    number: String,
+    userId: String
 }, {
     unique: true
 });
