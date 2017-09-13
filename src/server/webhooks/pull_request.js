@@ -71,8 +71,8 @@ function managePullRequestStore(req, done) {
     if (handleEvents.indexOf(req.args.action) === -1) {
         return done();
     }
-    var pr = prStore.generatePullRequest(req);
-    cla.getLinkedItem({ repo: pr.repo, owner: pr.owner }, function (err, item) {
+    var prInfo = prStore.generatePullRequestInfo(req.args.pull_request);
+    cla.getLinkedItem({ repo: prInfo.repo, owner: prInfo.owner }, function (err, item) {
         if (err) {
             return done(err);
         }
@@ -80,10 +80,10 @@ function managePullRequestStore(req, done) {
             return done();
         }
         if (req.args.action === 'opened' || req.args.action === 'reopened') {
-            return prStore.storePullRequest(req, done);
+            return prStore.storePullRequest(prInfo, done);
         }
         if (req.args.action === 'closed') {
-            return prStore.removePullRequest(req, done);
+            return prStore.removePullRequest(prInfo, done);
         }
     });
 }
@@ -136,7 +136,7 @@ module.exports = function (req, res) {
 
     managePullRequestStore(req, function (err) {
         if (err) {
-            var pr = prStore.generatePullRequest(req);
+            var pr = prStore.generatePullRequestInfo(req.args.pull_request);
             log.error({ err: err, pullRequest: pr });
         }
     });

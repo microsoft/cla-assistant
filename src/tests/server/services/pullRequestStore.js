@@ -8,35 +8,32 @@ describe('pullRequestStore', function () {
 
     beforeEach(function () {
         pullRequest = {
-            args: {
-                "action": "opened",
-                "number": 7,
-                "pull_request": {
-                    "user": {
-                        "login": "submitter",
-                        "id": 12345678,
-                    },
-                    "created_at": "2017-09-08T16:27:34Z",
-                    "head": {
-                        "user": {
-                            "login": "committer",
-                            "id": 87654321,
-                        }
-                    },
-                    "additions": 41,
-                    "deletions": 1,
-                    "changed_files": 1
-                },
-                "repository": {
+            "number": 7,
+            "user": {
+                "login": "submitter",
+                "id": 12345678
+            },
+            "created_at": "2017-09-08T16:27:34Z",
+            "head": {
+                "user": {
+                    "login": "committer",
+                    "id": 87654321
+                }
+            },
+            "base": {
+                "repo": {
                     "id": 13579111,
                     "name": "repo",
                     "owner": {
                         "login": "owner",
-                        "id": 24681012,
+                        "id": 24681012
                     }
                 }
-            }
-          };
+            },
+            "additions": 41,
+            "deletions": 1,
+            "changed_files": 1
+        };
     });
 
     describe('storePullRequest', function () {
@@ -59,8 +56,17 @@ describe('pullRequestStore', function () {
         });
 
         it('should store pull request info', function (it_done) {
-            pullRequestStore.storePullRequest(pullRequest, function (err) {
+            var prInfo = pullRequestStore.generatePullRequestInfo(pullRequest);
+            pullRequestStore.storePullRequest(prInfo, function (err) {
                 assert.ifError(err);
+                it_done();
+            });
+        });
+
+        it('should send error if not provide enough pull request info', function (it_done) {
+            var prInfo = {};
+            pullRequestStore.storePullRequest(prInfo, function (err) {
+                assert(err);
                 it_done();
             });
         });
@@ -82,8 +88,17 @@ describe('pullRequestStore', function () {
         });
 
         it('should remove pull request info', function (it_done) {
-            pullRequestStore.removePullRequest(pullRequest, function (err) {
+            var prInfo = pullRequestStore.generatePullRequestInfo(pullRequest);
+            pullRequestStore.removePullRequest(prInfo, function (err) {
                 assert.ifError(err);
+                it_done();
+            });
+        });
+
+        it('should send error if not provide enough pull request info', function (it_done) {
+            var prInfo = {};
+            pullRequestStore.removePullRequest(prInfo, function (err) {
+                assert(err);
                 it_done();
             });
         });

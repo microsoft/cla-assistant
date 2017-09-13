@@ -1,30 +1,47 @@
 var PullRequest = require('mongoose').model('PullRequest');
+var log = require('./logger');
 
 module.exports = {
-    storePullRequest: function (req, done) {
-        var pr = this.generatePullRequest(req);
-        PullRequest.create(pr, done);
+    storePullRequest: function (prInfo, done) {
+        if (!prInfo.repoId || !prInfo.owner || !prInfo.repo || !prInfo.number || !prInfo.user || !prInfo.userId || !prInfo.created_at) {
+            return done(new Error('Not enough info to store pull request'));
+        }
+        PullRequest.create(prInfo, done);
     },
 
-    removePullRequest: function (req, done) {
-        var pr = this.generatePullRequest(req);
+    removePullRequest: function (prInfo, done) {
+        if (!prInfo.userId || !prInfo.repoId || !prInfo.number) {
+            return done(new Error('Not enough info to delete pull request'));
+        }
         var query = {
-            userId: pr.userId,
-            repoId: pr.repoId,
-            number: pr.number
+            userId: prInfo.userId,
+            repoId: prInfo.repoId,
+            number: prInfo.number
         };
         PullRequest.remove(query, done);
     },
 
-    generatePullRequest: function (req) {
+    generatePullRequestInfo: function (pullRequest) {
         return {
-            repoId: req.args.repository.id,
-            owner: req.args.repository.owner.login,
-            repo: req.args.repository.name,
-            number: req.args.number.toString(),
-            user: req.args.pull_request.user.login,
-            userId: req.args.pull_request.user.id.toString(),
-            created_at: req.args.pull_request.created_at
+            repoId: pullRequest.base.repo.id.toString(),
+            owner: pullRequest.base.repo.owner.login,
+            repo: pullRequest.base.repo.name,
+            number: pullRequest.number.toString(),
+            user: pullRequest.user.login,
+            userId: pullRequest.user.id.toString(),
+            created_at: pullRequest.created_at
         };
+    },
+
+    storeIfNotExist: function (prInfo, done) {
+        if (!prInfo.repoId || !prInfo.owner || !prInfo.repo || !prInfo.number || !prInfo.user || !prInfo.userId || !prInfo.created_at) {
+            return done(new Error('Not enough info to store pull request'));
+        }
+        var query = {
+            userId: prInfo.userId,
+            repoId: prInfo.repoId,
+            number: prInfo.number
+        };
+        PullRequest.update(query, { $setOnInsert: prInfo }, { upsert: true }, done);
     }
 };
