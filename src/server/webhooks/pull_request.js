@@ -6,6 +6,7 @@ var repoService = require('../services/repo');
 var orgService = require('../services/org');
 var log = require('../services/logger');
 var config = require('../../config');
+var prStore = require('../services/pullRequestStore');
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // Github Pull Request Webhook Handler
@@ -61,6 +62,31 @@ function handleWebHook(args) {
     });
 }
 
+function managePullRequestStore(req, done) {
+    if (req.args.repository && req.args.repository.private) {
+        return done();
+    }
+    var handleEvents = ['opened', 'reopened', 'closed'];
+    if (handleEvents.indexOf(req.args.action) === -1) {
+        return done();
+    }
+    var prInfo = prStore.generatePullRequestInfo(req.args.pull_request);
+    cla.getLinkedItem({ repo: prInfo.repo, owner: prInfo.owner }, function (err, item) {
+        if (err) {
+            return done(err);
+        }
+        if (!item.gist) {
+            return done();
+        }
+        if (req.args.action === 'opened' || req.args.action === 'reopened') {
+            return prStore.storePullRequest(prInfo, done);
+        }
+        if (req.args.action === 'closed') {
+            return prStore.removePullRequest(prInfo, done);
+        }
+    });
+}
+
 module.exports = function (req, res) {
     if (['opened', 'reopened', 'synchronize'].indexOf(req.args.action) > -1 && (req.args.repository && req.args.repository.private == false)) {
         if (req.args.pull_request && req.args.pull_request.html_url) {
@@ -106,6 +132,13 @@ module.exports = function (req, res) {
             });
         }, config.server.github.enforceDelay);
     }
+
+    managePullRequestStore(req, function (err) {
+        if (err) {
+            var pr = prStore.generatePullRequestInfo(req.args.pull_request);
+            log.error({ err: err, pullRequest: pr });
+        }
+    });
 
     res.status(200).send('OK');
 };

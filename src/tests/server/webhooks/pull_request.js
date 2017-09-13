@@ -9,8 +9,9 @@ var cla = require('../../../server/services/cla');
 var repoService = require('../../../server/services/repo');
 var orgService = require('../../../server/services/org');
 var logger = require('../../../server/services/logger');
-
+var prStore = require('../../../server/services/pullRequestStore');
 var config = require('../../../config');
+
 
 // webhook under test
 var pull_request = require('../../../server/webhooks/pull_request');
@@ -275,7 +276,10 @@ describe('webhook pull request', function () {
 				getGHRepo: {}
 			},
 			cla: {
-				isClaRequired: true
+				isClaRequired: true,
+				getLinkedItem: {
+					gist: 'gist'
+				}
 			}
 		};
 
@@ -334,6 +338,15 @@ describe('webhook pull request', function () {
 		sinon.stub(logger, 'info', function (msg) {
 			assert(msg);
 		});
+		sinon.stub(prStore, 'storePullRequest', function (req, done) {
+			return done();
+		});
+		sinon.stub(prStore, 'removePullRequest', function (req, done) {
+			return done();
+		});
+		sinon.stub(cla, 'getLinkedItem', function (args, done) {
+			return done(null, Object.assign(args, testRes.cla.getLinkedItem));
+		});
 	});
 
 	afterEach(function () {
@@ -350,6 +363,9 @@ describe('webhook pull request', function () {
 		logger.error.restore();
 		logger.warn.restore();
 		logger.info.restore();
+		prStore.storePullRequest.restore();
+		prStore.removePullRequest.restore();
+		cla.getLinkedItem.restore();
 	});
 
 	it('should update status of pull request if not signed', function (it_done) {
@@ -555,5 +571,33 @@ describe('webhook pull request', function () {
 			assert(pullRequest.deleteComment.called);
 			it_done();
 		}, 10);
+	});
+
+	it('should store pull request when receiving pull request opened event', function (it_done) {
+		pull_request(test_req, res);
+		assert(prStore.storePullRequest.called);
+		it_done();
+	});
+
+	it('should store pull request when receiving pull request reopened event', function (it_done) {
+		test_req.args.action = 'reopened';
+		pull_request(test_req, res);
+		assert(prStore.storePullRequest.called);
+		it_done();
+	});
+
+	it('should delete pull request when receiving pull request closed event', function (it_done) {
+		test_req.args.action = 'closed';
+		pull_request(test_req, res);
+		assert(prStore.removePullRequest.called);
+		it_done();
+	});
+
+	it('should do nothing when the linked repo has null cla', function (it_done) {
+		testRes.cla.getLinkedItem.gist = null;
+		pull_request(test_req, res);
+		assert(!prStore.removePullRequest.called);
+		assert(!prStore.storePullRequest.called);
+		it_done();
 	});
 });
