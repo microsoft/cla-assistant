@@ -89,7 +89,9 @@ module.exports = {
 
         feature_flag: {
             close_comment: process.env.CLOSE_COMMENT,
-            always_show_unsigned_list: process.env.ALWAYS_SHOW_UNSIGNED_LIST
+            always_show_unsigned_list: process.env.ALWAYS_SHOW_UNSIGNED_LIST,
+            use_pull_request_store: process.env.USE_PULL_REQUEST_STORE,
+            use_submitter_as_contributor: process.env.USE_SUBMITTER_AS_CONTRIBUTOR
         },
 
         static: [

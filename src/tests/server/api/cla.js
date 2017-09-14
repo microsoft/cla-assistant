@@ -75,7 +75,8 @@ describe('', function () {
                             id: 13579111,
                             name: "repo",
                             owner: {
-                                login: "owner"
+                                login: "owner",
+                                id: 24681012
                             }
                         }
                     }
@@ -94,7 +95,8 @@ describe('', function () {
                             id: 13579111,
                             name: "repo",
                             owner: {
-                                login: "owner"
+                                login: "owner",
+                                id: 24681012
                             }
                         }
                     }

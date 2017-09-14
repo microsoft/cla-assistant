@@ -52,7 +52,7 @@ function stub() {
     testErr.claFindOne = null;
     testErr.orgServiceGet = null;
     testErr.repoServiceGet = null;
-    testErr.repoServiceGetCommitters = null;
+    testErr.repoServiceGetContributors = null;
 
     testRes.claFindOne = {};
     testRes.repoServiceGet = {
@@ -61,7 +61,7 @@ function stub() {
         token: 'abc',
         sharedGist: false
     };
-    testRes.repoServiceGetCommitters = [{
+    testRes.repoServiceGetContributors = [{
         name: 'login2'
     }, {
         name: 'login'
@@ -408,14 +408,14 @@ describe('cla:checkPullRequestSignatures', function () {
         testRes.getPR = {
             created_at: prCreateDate
         };
-        sinon.stub(repo_service, 'getPRCommitters', function (arg, done) {
-            done(testErr.repoServiceGetCommitters, testRes.repoServiceGetCommitters);
+        sinon.stub(repo_service, 'getContributors', function (arg, done) {
+            done(testErr.repoServiceGetContributors, testRes.repoServiceGetContributors);
         });
     });
 
     afterEach(function () {
         restore();
-        repo_service.getPRCommitters.restore();
+        repo_service.getContributors.restore();
         clock.restore();
     });
 
@@ -466,8 +466,8 @@ describe('cla:checkPullRequestSignatures', function () {
     });
 
     it('should send error if committers list is empty', function (it_done) {
-        testErr.repoServiceGetCommitters = 'err';
-        testRes.repoServiceGetCommitters = undefined;
+        testErr.repoServiceGetContributors = 'err';
+        testRes.repoServiceGetContributors = undefined;
 
         var args = {
             repo: 'myRepo',
@@ -496,7 +496,7 @@ describe('cla:checkPullRequestSignatures', function () {
     });
 
     it('should return map of committers who has signed, who has not signed and who has no github account', function (it_done) {
-        testRes.repoServiceGetCommitters = [{
+        testRes.repoServiceGetContributors = [{
             name: 'login1',
             id: '123'
         }, {

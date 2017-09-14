@@ -53,6 +53,10 @@ spec:
           value: 'true'
         - name: ALWAYS_SHOW_UNSIGNED_LIST
           value: 'true'
+        - name: USE_PULL_REQUEST_STORE
+          value: 'true'
+        - name: USE_SUBMITTER_AS_CONTRIBUTOR
+          value: 'true'
       imagePullSecrets:
         - name: ospok8sprod.azurecr.io
 ---
