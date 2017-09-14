@@ -8,6 +8,7 @@ var async = require('async');
 var github = require('../services/github');
 var logger = require('../services/logger');
 var orgService = require('../services/org');
+var config = require('../../config');
 
 //services
 var url = require('../services/url');
@@ -75,6 +76,18 @@ var selection = function (args) {
             repo: args.repo,
             owner: args.owner
         };
+};
+
+var getPRSubmitter = function (owner, repo, number, token, done) {
+    getPullRequest(owner, repo, number, token, function (err, pullRequest) {
+        if (err || resp.message) {
+            return done(err || new Error(resp.message));
+        }
+        return {
+            user: pullRequest.user.login,
+            userId: pullRequest.user.id.toString()
+        };
+    });
 };
 
 module.exports = {
@@ -162,6 +175,15 @@ module.exports = {
     },
     remove: function (args, done) {
         Repo.remove(selection(args)).exec(done);
+    },
+
+    getContributors: function (args, done) {
+        if (config.server.feature_flag.use_submitter_as_contributor === 'true') {
+            return getPRSubmitter(args.owner, args.repo, args.number, args.token, function (err, submitter) {
+                done(err, [submitter]);
+            });
+        }
+        getPRCommitters(args, done);
     },
 
     getPRCommitters: function (args, done) {
