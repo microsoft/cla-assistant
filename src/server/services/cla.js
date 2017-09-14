@@ -317,6 +317,7 @@ module.exports = function () {
                 repo: repo,
                 owner: owner,
                 number: number,
+                noCache: true
             },
             token: token
         }).then(function (resp) {
