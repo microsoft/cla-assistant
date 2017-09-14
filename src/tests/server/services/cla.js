@@ -109,6 +109,7 @@ function stub() {
                 return Promise.resolve(testRes.gistData);
             }
         } else if (args.obj === 'pullRequests' && args.fun === 'getFiles') {
+            assert(args.arg.noCache);
             return Promise.resolve(testRes.pullRequestFiles);
         }
     });
