@@ -3,7 +3,7 @@ var log = require('./logger');
 
 module.exports = {
     storePullRequest: function (prInfo, done) {
-        if (!prInfo.repoId || !prInfo.owner || !prInfo.repo || !prInfo.number || !prInfo.user || !prInfo.userId || !prInfo.created_at) {
+        if (!prInfo.ownerId || !prInfo.owner || !prInfo.repoId || !prInfo.repo || !prInfo.number || !prInfo.user || !prInfo.userId || !prInfo.created_at) {
             return done(new Error('Not enough info to store pull request'));
         }
         PullRequest.create(prInfo, done);
@@ -23,8 +23,9 @@ module.exports = {
 
     generatePullRequestInfo: function (pullRequest) {
         return {
-            repoId: pullRequest.base.repo.id.toString(),
+            ownerId: pullRequest.base.repo.owner.id.toString(),
             owner: pullRequest.base.repo.owner.login,
+            repoId: pullRequest.base.repo.id.toString(),
             repo: pullRequest.base.repo.name,
             number: pullRequest.number.toString(),
             user: pullRequest.user.login,
@@ -34,7 +35,7 @@ module.exports = {
     },
 
     storeIfNotExist: function (prInfo, done) {
-        if (!prInfo.repoId || !prInfo.owner || !prInfo.repo || !prInfo.number || !prInfo.user || !prInfo.userId || !prInfo.created_at) {
+        if (!prInfo.ownerId || !prInfo.owner || !prInfo.repoId || !prInfo.repo || !prInfo.number || !prInfo.user || !prInfo.userId || !prInfo.created_at) {
             return done(new Error('Not enough info to store pull request'));
         }
         var query = {
@@ -43,5 +44,14 @@ module.exports = {
             number: prInfo.number
         };
         PullRequest.update(query, { $setOnInsert: prInfo }, { upsert: true }, done);
+    },
+
+    findPullRequestsByUser: function (userId, ownerId, repoId, done) {
+        var query = {
+            userId: userId,
+            repoId: repoId,
+            ownerId: ownerId
+        };
+        PullRequest.find(query, done);
     }
 };
