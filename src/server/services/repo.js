@@ -78,18 +78,6 @@ var selection = function (args) {
         };
 };
 
-var getPRSubmitter = function (owner, repo, number, token, done) {
-    getPullRequest(owner, repo, number, token, function (err, pullRequest) {
-        if (err || resp.message) {
-            return done(err || new Error(resp.message));
-        }
-        return {
-            user: pullRequest.user.login,
-            userId: pullRequest.user.id.toString()
-        };
-    });
-};
-
 module.exports = {
     timesToRetryGitHubCall: 30,
     all: function (done) {
@@ -177,15 +165,6 @@ module.exports = {
         Repo.remove(selection(args)).exec(done);
     },
 
-    getContributors: function (args, done) {
-        if (config.server.feature_flag.use_submitter_as_contributor === 'true') {
-            return getPRSubmitter(args.owner, args.repo, args.number, args.token, function (err, submitter) {
-                done(err, [submitter]);
-            });
-        }
-        getPRCommitters(args, done);
-    },
-
     getPRCommitters: function (args, done) {
         var self = this;
 
@@ -271,6 +250,17 @@ module.exports = {
                             collectTokenAndCallGithub(args, item);
                         }, 1000 * self.timesToRetryGitHubCall);
                         return;
+                    }
+                }
+                if (config.server.feature_flag.required_signees) {
+                    if (config.server.feature_flag.required_signees.indexOf('submitter') > -1) {
+                        committers.push({
+                            user: pr.user.login,
+                            userId: pr.user.id
+                        });
+                    }
+                    if (config.server.feature_flag.required_signees.indexOf('committers') === -1) {
+                        return done(null, committers);
                     }
                 }
                 // args.url = url.githubPullRequestCommits(args.owner, args.repo, args.number);

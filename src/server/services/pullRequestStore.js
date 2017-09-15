@@ -46,12 +46,7 @@ module.exports = {
         PullRequest.update(query, { $setOnInsert: prInfo }, { upsert: true }, done);
     },
 
-    findPullRequestsByUser: function (userId, ownerId, repoId, done) {
-        var query = {
-            userId: userId,
-            repoId: repoId,
-            ownerId: ownerId
-        };
+    findPullRequests: function (query, done) {
         PullRequest.find(query, done);
     }
 };

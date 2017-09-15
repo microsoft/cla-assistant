@@ -435,7 +435,7 @@ module.exports = function () {
                     args.gist_version = gist.data.history[0].version;
                     return getPR(args.owner, args.repo, args.number, item.token).then(function (pullRequest) {
                         args.onDates.push(new Date(pullRequest.created_at));
-                        repoService.getContributors(args, function (error, committers) {
+                        repoService.getPRCommitters(args, function (error, committers) {
                             if (error) {
                                 logger.warn(new Error(error).stack);
                             }
