@@ -167,6 +167,7 @@ module.exports = {
 
     getPRCommitters: function (args, done) {
         var self = this;
+        var committers = [];
 
         var handleError = function (err, arguments) {
             if (!arguments.count) {
@@ -177,7 +178,6 @@ module.exports = {
         };
 
         var callGithub = function (arg, linkedItem) {
-            var committers = [];
             var linkedRepo = linkedItem && linkedItem.repoId ? linkedItem : undefined;
 
             github.call(arg, function (err, res) {
@@ -255,8 +255,8 @@ module.exports = {
                 if (config.server.feature_flag.required_signees) {
                     if (config.server.feature_flag.required_signees.indexOf('submitter') > -1) {
                         committers.push({
-                            user: pr.user.login,
-                            userId: pr.user.id
+                            name: pr.user.login,
+                            id: pr.user.id
                         });
                     }
                     if (config.server.feature_flag.required_signees.indexOf('committers') === -1) {

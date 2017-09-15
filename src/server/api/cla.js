@@ -358,18 +358,18 @@ module.exports = {
                         }, done);
                     });
                 }
-                cla.check(args, function (cla_err, all_signed, user_map) {
+                cla.checkPullRequestSignatures(args, function (cla_err, result) {
                     if (cla_err) {
                         log.error(cla_err);
                     }
-                    args.signed = all_signed;
+                    args.signed = result.signed;
                     return status.update(args, function () {
                         prService.editComment({
                             repo: args.repo,
                             owner: args.owner,
                             number: args.number,
                             signed: args.signed,
-                            user_map: user_map
+                            user_map: result.user_map
                         }, done);
                     });
                 });
@@ -488,6 +488,7 @@ module.exports = {
                 log.error(err);
                 return done(err);
             }
+            req.args.userId = req.user.id;
             self.validateRelatedPullRequests(req, function (validateErr) {
                 if (validateErr) {
                     log.error(validateErr);
@@ -658,12 +659,23 @@ module.exports = {
             owner: owner,
             repo: repo
         }, function (err, item) {
-            if (error) {
-                return done(error);
+            if (err) {
+                return done(err);
             }
-            var ownerId = !item.sharedGist && item.orgId ? item.orgId : undefined;
-            var repoId = !item.sharedGist && item.repoId ? item.repoId : undefined;
-            return prStore.findPullRequests({ userId: userId, ownerId: ownerId, repoId: repoId }, function (err, pullRequests) {
+            var query = {};
+            if (userId) {
+                query.userId = userId.toString();
+            }
+            if (!item.sharedGist && item.orgId) {
+                query.ownerId = item.orgId.toString();
+            }
+            if (!item.sharedGist && item.repoId) {
+                query.orgId = item.repoId.toString();
+            }
+            return prStore.findPullRequests(query, function (err, pullRequests) {
+                if (err) {
+                    return done(err);
+                }
                 async.series(pullRequests.map(function (pullRequest) {
                     return function (callback) {
                         var args = {

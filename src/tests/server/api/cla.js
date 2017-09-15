@@ -1212,20 +1212,22 @@ describe('', function () {
                 number: 1,
                 token: 'token'
             };
-            resp.cla.check = {
+            resp.cla.checkPullRequestSignatures = {
                 gist: 'github/gist',
-                signed: false,
-                user_map: {
-                    signed: ['a'],
-                    not_signed: ['b'],
-                    unknown: ['c']
+                result: {
+                    signed: false,
+                    user_map: {
+                        signed: ['a'],
+                        not_signed: ['b'],
+                        unknown: ['c']
+                    }
                 }
             };
             resp.cla.getLinkedItem = Object.assign({}, testData.repo_from_db);
             error.cla.isClaRequired = null;
             resp.cla.isClaRequired = true;
-            sinon.stub(cla, 'check', function (args, cb) {
-                cb(null, resp.cla.check.signed, resp.cla.check.user_map);
+            sinon.stub(cla, 'checkPullRequestSignatures', function (args, cb) {
+                cb(null, resp.cla.checkPullRequestSignatures.result);
             });
             sinon.stub(cla, 'isClaRequired', function (args, cb) {
                 cb(error.cla.isClaRequired, resp.cla.isClaRequired);
@@ -1248,7 +1250,7 @@ describe('', function () {
         });
 
         afterEach(function () {
-            cla.check.restore();
+            cla.checkPullRequestSignatures.restore();
             cla.isClaRequired.restore();
             statusService.update.restore();
             statusService.updateForNullCla.restore();
@@ -1260,7 +1262,7 @@ describe('', function () {
         it('should update status and edit comment when the repo is NOT linked with a null CLA and the pull request is significant', function (it_done) {
             cla_api.validatePullRequest(args, function () {
                 assert(statusService.update.calledWithMatch({
-                    signed: resp.cla.check.signed,
+                    signed: resp.cla.checkPullRequestSignatures.result.signed,
                     repo: 'Hello-World',
                     owner: 'octocat',
                     sha: 'abcde',
@@ -1270,8 +1272,8 @@ describe('', function () {
                     repo: 'Hello-World',
                     owner: 'octocat',
                     number: 1,
-                    signed: resp.cla.check.signed,
-                    user_map: resp.cla.check.user_map
+                    signed: resp.cla.checkPullRequestSignatures.result.signed,
+                    user_map: resp.cla.checkPullRequestSignatures.result.user_map
                 }));
                 it_done();
             });
@@ -1283,7 +1285,7 @@ describe('', function () {
                 assert(statusService.updateForNullCla.called);
                 assert(prService.deleteComment.called);
                 assert(!cla.isClaRequired.called);
-                assert(!cla.check.called);
+                assert(!cla.checkPullRequestSignatures.called);
                 it_done();
             });
         });
@@ -1293,7 +1295,7 @@ describe('', function () {
             cla_api.validatePullRequest(args, function (err) {
                 assert(statusService.updateForClaNotRequired.called);
                 assert(prService.deleteComment.called);
-                assert(!cla.check.called);
+                assert(!cla.checkPullRequestSignatures.called);
                 assert(!statusService.updateForNullCla.called);
                 it_done();
             });
