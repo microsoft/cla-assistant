@@ -8,6 +8,7 @@ var async = require('async');
 var github = require('../services/github');
 var logger = require('../services/logger');
 var orgService = require('../services/org');
+var config = require('../../config');
 
 //services
 var url = require('../services/url');
@@ -166,6 +167,7 @@ module.exports = {
 
     getPRCommitters: function (args, done) {
         var self = this;
+        var committers = [];
 
         var handleError = function (err, arguments) {
             if (!arguments.count) {
@@ -176,7 +178,6 @@ module.exports = {
         };
 
         var callGithub = function (arg, linkedItem) {
-            var committers = [];
             var linkedRepo = linkedItem && linkedItem.repoId ? linkedItem : undefined;
 
             github.call(arg, function (err, res) {
@@ -249,6 +250,17 @@ module.exports = {
                             collectTokenAndCallGithub(args, item);
                         }, 1000 * self.timesToRetryGitHubCall);
                         return;
+                    }
+                }
+                if (config.server.feature_flag.required_signees) {
+                    if (config.server.feature_flag.required_signees.indexOf('submitter') > -1) {
+                        committers.push({
+                            name: pr.user.login,
+                            id: pr.user.id
+                        });
+                    }
+                    if (config.server.feature_flag.required_signees.indexOf('committers') === -1) {
+                        return done(null, committers);
                     }
                 }
                 // args.url = url.githubPullRequestCommits(args.owner, args.repo, args.number);

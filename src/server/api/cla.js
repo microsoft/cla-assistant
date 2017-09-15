@@ -358,18 +358,18 @@ module.exports = {
                         }, done);
                     });
                 }
-                cla.check(args, function (cla_err, all_signed, user_map) {
+                cla.checkPullRequestSignatures(args, function (cla_err, result) {
                     if (cla_err) {
                         log.error(cla_err);
                     }
-                    args.signed = all_signed;
+                    args.signed = result.signed;
                     return status.update(args, function () {
                         prService.editComment({
                             repo: args.repo,
                             owner: args.owner,
                             number: args.number,
                             signed: args.signed,
-                            user_map: user_map
+                            user_map: result.user_map
                         }, done);
                     });
                 });
@@ -488,6 +488,7 @@ module.exports = {
                 log.error(err);
                 return done(err);
             }
+            req.args.userId = req.user.id;
             self.validateRelatedPullRequests(req, function (validateErr) {
                 if (validateErr) {
                     log.error(validateErr);
@@ -627,6 +628,70 @@ module.exports = {
     },
 
     validateRelatedPullRequests: function (req, done) {
+        if (config.server.feature_flag.cache_pull_requests === 'true') {
+            return this.validatePullRequestsFromCache(req.args.userId, req.args.owner, req.args.repo, done);
+        } else {
+            return this.validatePullRequestsFromGitHub(req, done);
+        }
+    },
+
+    validate: function (req, done) {
+        var self = this;
+        var schema = Joi.object().keys({
+            org: Joi.string(),
+            owner: Joi.string(),
+            repo: Joi.string(),
+        }).and('repo', 'owner').xor('repo', 'org');
+        Joi.validate(req.args, schema, { abortEarly: false, convert: false, allowUnknown: true }, function (joiErr) {
+            if (joiErr) {
+                joiErr.code = 400;
+                return done(joiErr);
+            }
+            req.args.owner = req.args.owner || req.args.org;
+            delete req.args.org;
+            self.validateRelatedPullRequests(req, done);
+        });
+    },
+
+    validatePullRequestsFromCache: function(userId, owner, repo, done) {
+        var self = this;
+        cla.getLinkedItem({
+            owner: owner,
+            repo: repo
+        }, function (err, item) {
+            if (err) {
+                return done(err);
+            }
+            var query = {};
+            if (userId) {
+                query.userId = userId.toString();
+            }
+            if (!item.sharedGist && item.orgId) {
+                query.ownerId = item.orgId.toString();
+            }
+            if (!item.sharedGist && item.repoId) {
+                query.orgId = item.repoId.toString();
+            }
+            return prStore.findPullRequests(query, function (err, pullRequests) {
+                if (err) {
+                    return done(err);
+                }
+                async.series(pullRequests.map(function (pullRequest) {
+                    return function (callback) {
+                        var args = {
+                            owner: pullRequest.owner,
+                            repo: pullRequest.repo,
+                            number: pullRequest.number,
+                            token: item.token
+                        };
+                        self.validatePullRequest(args, callback);
+                    };
+                }), done);
+            });
+        });
+    },
+
+    validatePullRequestsFromGitHub: function (req, done) {
         var self = this;
         self.getLinkedItem({
             args: {
@@ -652,24 +717,6 @@ module.exports = {
                 self.validatePullRequests(req);
             }
             done(null);
-        });
-    },
-
-    validate: function (req, done) {
-        var self = this;
-        var schema = Joi.object().keys({
-            org: Joi.string(),
-            owner: Joi.string(),
-            repo: Joi.string(),
-        }).and('repo', 'owner').xor('repo', 'org');
-        Joi.validate(req.args, schema, { abortEarly: false, convert: false, allowUnknown: true }, function (joiErr) {
-            if (joiErr) {
-                joiErr.code = 400;
-                return done(joiErr);
-            }
-            req.args.owner = req.args.owner || req.args.org;
-            delete req.args.org;
-            self.validateRelatedPullRequests(req, done);
         });
     }
 

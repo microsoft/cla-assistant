@@ -89,7 +89,9 @@ module.exports = {
 
         feature_flag: {
             close_comment: process.env.CLOSE_COMMENT,
-            always_show_unsigned_list: process.env.ALWAYS_SHOW_UNSIGNED_LIST
+            always_show_unsigned_list: process.env.ALWAYS_SHOW_UNSIGNED_LIST,
+            cache_pull_requests: process.env.CACHE_PULL_REQUESTS,
+            required_signees: process.env.REQUIRED_SIGNEES
         },
 
         static: [
