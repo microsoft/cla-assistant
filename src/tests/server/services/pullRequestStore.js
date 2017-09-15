@@ -103,4 +103,59 @@ describe('pullRequestStore', function () {
             });
         });
     });
+
+    describe('storeIfNotExist', function () {
+        var prInfo = null;
+        beforeEach(function () {
+            prInfo = pullRequestStore.generatePullRequestInfo(pullRequest);
+            sinon.stub(PullRequest, 'update', function (query, doc, options, done) {
+                assert(query);
+                assert(query.repoId);
+                assert(query.number);
+                assert(query.userId);
+                assert(doc);
+                done();
+            });
+        });
+
+        afterEach(function () {
+            PullRequest.update.restore();
+        });
+
+        it('should store pull request info if not exists', function (it_done) {
+            pullRequestStore.storeIfNotExist(prInfo, function (err) {
+                assert.ifError(err);
+                it_done();
+            });
+        });
+
+        it('should send error if not provide enough pull request info', function (it_done) {
+            var prInfo = {};
+            pullRequestStore.storeIfNotExist(prInfo, function (err) {
+                assert(err);
+                it_done();
+            });
+        });
+    });
+
+    describe('findPullRequests', function () {
+        var query = null;
+        beforeEach(function () {
+            query = {};
+            sinon.stub(PullRequest, 'find', function (query, done) {
+                done();
+            });
+        });
+
+        afterEach(function () {
+            PullRequest.find.restore();
+        });
+
+        it('should call find when query pull request', function (it_done) {
+            pullRequestStore.findPullRequests(query, function (err) {
+                assert(PullRequest.find.called);
+                it_done();
+            });
+        });
+    });
 });
