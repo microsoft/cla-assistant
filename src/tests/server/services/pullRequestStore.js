@@ -142,7 +142,7 @@ describe('pullRequestStore', function () {
         var query = null;
         beforeEach(function () {
             query = {};
-            sinon.stub(PullRequest, 'find', function (query, done) {
+            sinon.stub(PullRequest, 'find', function (query, selection, options, done) {
                 done();
             });
         });
