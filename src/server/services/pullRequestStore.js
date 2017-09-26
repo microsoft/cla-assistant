@@ -47,6 +47,12 @@ module.exports = {
     },
 
     findPullRequests: function (query, done) {
-        PullRequest.find(query, done);
+        PullRequest.find(query, {}, {
+            sort: {
+                userId: 1,
+                repoId: 1,
+                number: 1
+            }
+        }, done);
     }
 };
