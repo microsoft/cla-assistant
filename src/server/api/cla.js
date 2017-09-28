@@ -331,7 +331,6 @@ module.exports = {
     // sha (optional)
     // token (optional)
     validatePullRequest: function (args, done) {
-        args.token = args.token ? args.token : token;
         cla.getLinkedItem(args, function (error, item) {
             if (error) {
                 return log.error(error);
@@ -345,6 +344,7 @@ module.exports = {
                     }, done);
                 });
             }
+            args.token = args.token || item.token;
             cla.isClaRequired(args, function (error, isClaRequired) {
                 if (error) {
                     return log.error(error);
