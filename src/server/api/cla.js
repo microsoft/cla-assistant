@@ -331,7 +331,6 @@ module.exports = {
     // sha (optional)
     // token (optional)
     validatePullRequest: function (args, done) {
-        args.token = args.token ? args.token : token;
         cla.getLinkedItem(args, function (error, item) {
             if (error) {
                 var logArgs = Object.assign({}, args);
@@ -339,6 +338,7 @@ module.exports = {
                 log.error(error, logArgs);
                 return done();
             }
+            args.token = args.token || item.token;
             if (!item.gist) {
                 return status.updateForNullCla(args, function () {
                     prService.deleteComment({
