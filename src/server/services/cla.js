@@ -176,7 +176,7 @@ module.exports = function () {
         return newQuery;
     };
 
-    var getPR = function (owner, repo, number, token) {
+    var getPR = function (owner, repo, number, token, noCache) {
         var deferred = q.defer();
         github.call({
             obj: 'pullRequests',
@@ -184,7 +184,8 @@ module.exports = function () {
             arg: {
                 owner: owner,
                 repo: repo,
-                number: number
+                number: number,
+                noCache: noCache
             },
             token: token
         }, function (error, pullRequest) {
@@ -333,18 +334,12 @@ module.exports = function () {
             if (typeof item.minFileChanges !== 'number' && typeof item.minCodeChanges !== 'number') {
                 return true;
             }
-            return getPullRequestFiles(repo, owner, number, token).then(function (files) {
-                if (typeof item.minFileChanges === 'number' && files.length >= item.minFileChanges) {
+            var noCache = true;
+            return getPR(owner, repo, number, token, noCache).then(function (pullRequest) {
+                if (typeof item.minFileChanges === 'number' && pullRequest.changed_files >= item.minFileChanges) {
                     return true;
                 }
-                if (typeof item.minCodeChanges === 'number') {
-                    var sum = 0;
-                    return files.some(function (file) {
-                        sum += file.changes;
-                        return sum >= item.minCodeChanges;
-                    });
-                }
-                return false;
+                return typeof item.minCodeChanges === 'number' && pullRequest.additions + pullRequest.deletions >= item.minCodeChanges;
             });
         });
     };

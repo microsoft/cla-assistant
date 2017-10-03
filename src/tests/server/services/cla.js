@@ -108,9 +108,6 @@ function stub() {
             } else {
                 return Promise.resolve(testRes.gistData);
             }
-        } else if (args.obj === 'pullRequests' && args.fun === 'getFiles') {
-            assert(args.arg.noCache);
-            return Promise.resolve(testRes.pullRequestFiles);
         }
     });
 }
@@ -1285,16 +1282,7 @@ describe('cla:isClaRequired', function () {
             gist: 'url/gistId',
             token: 'abc'
         };
-        testRes.pullRequestFiles = [
-            {
-                filename: 'test1',
-                changes: 4,
-            },
-            {
-                filename: 'test2',
-                changes: 10,
-            }
-        ];
+        testRes.getPR = {};
     });
 
     afterEach(function () {
@@ -1310,14 +1298,8 @@ describe('cla:isClaRequired', function () {
     });
 
     it('should require a CLA when pull request exceed minimum file changes', function (it_done) {
+        testRes.getPR.changed_files = 2;
         testRes.repoServiceGet.minFileChanges = 2;
-        testRes.pullRequestFiles = {
-            data:[{
-                filename: 'test1'
-            }, {
-                filename: 'test2'
-            }]
-        };
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
             assert(isClaRequired);
@@ -1327,15 +1309,9 @@ describe('cla:isClaRequired', function () {
 
     it('should require a CLA when pull request exceed minimum code changes', function (it_done) {
         testRes.repoServiceGet.minCodeChanges = 15;
-        testRes.pullRequestFiles = {
-            data: [{
-                filename: 'test1',
-                changes: 5
-            }, {
-                filename: 'test2',
-                changes: 10
-            }]
-        };
+        testRes.getPR.changed_files = 1;
+        testRes.getPR.additions = 10;
+        testRes.getPR.deletions = 5;
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
             assert(isClaRequired);
@@ -1346,12 +1322,9 @@ describe('cla:isClaRequired', function () {
     it('should NOT require a CLA when pull request NOT exceed minimum file and code changes', function (it_done) {
         testRes.repoServiceGet.minFileChanges = 2;
         testRes.repoServiceGet.minCodeChanges = 15;
-        testRes.pullRequestFiles = {
-            data: [{
-                filename: 'test1',
-                changes: 14,
-            }]
-        };
+        testRes.getPR.changed_files = 1;
+        testRes.getPR.additions = 10;
+        testRes.getPR.deletions = 4;
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
             assert(!isClaRequired);
