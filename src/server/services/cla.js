@@ -339,10 +339,7 @@ module.exports = function () {
                 if (typeof item.minFileChanges === 'number' && pullRequest.changed_files >= item.minFileChanges) {
                     return true;
                 }
-                if (typeof item.minCodeChanges === 'number' && pullRequest.additions + pullRequest.deletions >= item.minCodeChanges) {
-                    return true;
-                }
-                return false;
+                return typeof item.minCodeChanges === 'number' && pullRequest.additions + pullRequest.deletions >= item.minCodeChanges;
             });
         });
     };
