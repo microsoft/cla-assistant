@@ -4,6 +4,7 @@ var cache = require('memory-cache');
 var config = require('../../config');
 var GitHubApi = require('github');
 var logger = require('./logger');
+var stringify = require('json-stable-stringify');
 
 // var githubApi;
 
@@ -68,10 +69,13 @@ var githubService = {
         var obj = call.obj;
         var token = call.token;
 
-        var stringArgs = JSON.stringify({
+        var argWithoutNoCache = Object.assign({}, arg);
+        delete argWithoutNoCache.noCache;
+
+        var stringArgs = stringify({
             obj: call.obj,
             fun: call.fun,
-            arg: call.arg,
+            arg: argWithoutNoCache,
             token: call.token
         });
         var github = newGithubApi();
