@@ -485,7 +485,6 @@ module.exports = {
 
         cla.sign(args, function (err, signed) {
             if (err) {
-                log.error(err);
                 return done(err);
             }
             req.args.userId = req.user.id;
@@ -611,7 +610,6 @@ module.exports = {
             delete req.args.org;
             cla.terminate(req.args, function (err, dbCla) {
                 if (err) {
-                    log.error(err);
                     return done(err);
                 }
                 if (!req.args.validatePRs) {

@@ -1384,7 +1384,6 @@ describe('', function () {
             error.cla.sign = 'You\'ve already signed the cla.';
             cla_api.addSignature(req, function (err) {
                 assert(err === error.cla.sign);
-                assert(log.error.called);
                 assert(!cla_api.validate.called);
                 it_done();
             });
@@ -1512,7 +1511,6 @@ describe('', function () {
             error.cla.terminate = 'Cannot find cla record';
             cla_api.terminateSignature(req, function (err) {
                 assert(err === error.cla.terminate);
-                assert(log.error.called);
                 assert(!cla_api.validateRelatedPullRequests.called);
                 it_done();
             });
