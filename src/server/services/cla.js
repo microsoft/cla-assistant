@@ -468,6 +468,7 @@ module.exports = function () {
                 if (!item.gist) {
                     var nullClaErr = new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
                     nullClaErr.code = 200;
+                    logger.info(nullClaErr);
                     throw nullClaErr;
                 }
                 return getGist(item.gist, item.token).then(function (gist) {
@@ -477,6 +478,7 @@ module.exports = function () {
                         if (cla) {
                             var signedErr = new Error('You\'ve already signed the cla');
                             signedErr.code = 200;
+                            logger.info(signedErr);
                             throw signedErr;
                         }
                         var argsToCreate = {
@@ -664,6 +666,7 @@ module.exports = function () {
                 if (!item.gist) {
                     var nullClaErr = new Error('The repository don\'t need to sign a CLA because it has a null CLA.');
                     nullClaErr.code = 200;
+                    logger.info(nullClaErr);
                     throw nullClaErr;
                 }
                 return getGist(item.gist, item.token).then(function (gist) {
@@ -674,6 +677,7 @@ module.exports = function () {
                         if (!cla) {
                             var noRecordErr = new Error('No valid cla record');
                             noRecordErr.code = 200;
+                            logger.info(noRecordErr);
                             throw noRecordErr;
                         }
                         cla.end_at = endDate;

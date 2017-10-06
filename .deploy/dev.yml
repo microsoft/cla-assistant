@@ -47,6 +47,11 @@ spec:
             secretKeyRef:
               name: msftclas-docdb-dev
               key: value
+        - name: AZURE_APP_INSIGHTS
+          valueFrom:
+            secretKeyRef:
+              name: msftclas-app-insights-dev
+              key: value
         - name: GITHUB_ADMIN_USERS
           value: 'jeffmcaffer, willbar, jeffwilcox, geneh, notlaforge, arnom-ms, capfei, MichaelTsengLZ, MichaelTsengZL'
         - name: CLOSE_COMMENT
