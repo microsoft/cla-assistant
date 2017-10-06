@@ -335,6 +335,7 @@ module.exports = {
             if (error) {
                 return log.error(error);
             }
+            args.token = args.token || item.token;
             if (!item.gist) {
                 return status.updateForNullCla(args, function () {
                     prService.deleteComment({
@@ -344,7 +345,6 @@ module.exports = {
                     }, done);
                 });
             }
-            args.token = args.token || item.token;
             cla.isClaRequired(args, function (error, isClaRequired) {
                 if (error) {
                     return log.error(error);
