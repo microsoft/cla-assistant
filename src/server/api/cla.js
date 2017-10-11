@@ -492,8 +492,9 @@ module.exports = {
                 if (validateErr) {
                     log.error(validateErr);
                 }
-                done(validateErr, signed);
             });
+            // Signing page will get a timeout error if waiting for validating pull requests.
+            done(null, signed);
         });
     },
 
@@ -564,8 +565,9 @@ module.exports = {
                     if (validateErr) {
                         log.error(validateErr);
                     }
-                    done(validateErr, signed);
                 });
+                // Add signature API will get a timeout error if waiting for validating pull requests.
+                done(null, signed);
             });
         });
     },
@@ -619,8 +621,9 @@ module.exports = {
                     if (validateErr) {
                         log.error(validateErr);
                     }
-                    done(validateErr, dbCla);
                 });
+                // Terminate signature API will get a timeout error if waiting for validating pull requests.
+                done(null, dbCla);
             });
         });
     },
@@ -668,7 +671,7 @@ module.exports = {
                 query.ownerId = item.orgId.toString();
             }
             if (!item.sharedGist && item.repoId) {
-                query.orgId = item.repoId.toString();
+                query.repoId = item.repoId.toString();
             }
             return prStore.findPullRequests(query, function (err, pullRequests) {
                 if (err) {

@@ -487,7 +487,6 @@ describe('', function () {
             cla_api.sign(req, function (err, res) {
                 assert(cla_api.validateRelatedPullRequests.called);
                 assert(log.error.calledWith(error.cla_api.validateRelatedPullRequests));
-                assert.equal(err, error.cla_api.validateRelatedPullRequests);
                 it_done();
             });
         });
@@ -1391,8 +1390,7 @@ describe('', function () {
 
         it('should log error when validate related pull requests failed', function (it_done) {
             error.cla_api.validateRelatedPullRequests = 'Validate pull request failed';
-            cla_api.addSignature(req, function (err) {
-                assert(err);
+            cla_api.addSignature(req, function () {
                 assert(cla.sign.called);
                 assert(cla_api.validateRelatedPullRequests.called);
                 assert(log.error.called);
