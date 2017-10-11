@@ -103,7 +103,8 @@ module.exports = {
             close_comment: process.env.CLOSE_COMMENT,
             always_show_unsigned_list: process.env.ALWAYS_SHOW_UNSIGNED_LIST,
             cache_pull_requests: process.env.CACHE_PULL_REQUESTS,
-            required_signees: process.env.REQUIRED_SIGNEES
+            required_signees: process.env.REQUIRED_SIGNEES,
+            enable_private_repos: process.env.ENABLE_PRIVATE_REPOS
         },
 
         static: [
