@@ -22,6 +22,9 @@ function checkReturnTo(req, res, next) {
     }
     if (req.query.admin === 'true') {
         scope = config.server.github.admin_scope.concat();
+        if (config.server.feature_flag.enable_private_repos) {
+            scope.push('repo');
+        }
         req.session.requiredScope = 'admin';
     }
     if (req.query.org_admin === 'true') {

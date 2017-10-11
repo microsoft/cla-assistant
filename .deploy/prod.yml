@@ -62,6 +62,8 @@ spec:
           value: 'true'
         - name: REQUIRED_SIGNEES
           value: 'submitter'
+        - name: ENABLE_PRIVATE_REPOS
+          value: 'true'
       imagePullSecrets:
         - name: ospok8sprod.azurecr.io
 ---
