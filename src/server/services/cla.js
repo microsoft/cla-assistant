@@ -128,11 +128,10 @@ module.exports = function () {
         if (gist_version) {
             sharedGistCondition.gist_version = gist_version;
         }
-        if (user) {
-            sharedGistCondition.user = user;
-        }
         if (userId) {
             sharedGistCondition.userId = userId;
+        } else if (user) {
+            sharedGistCondition.user = user;
         }
         return sharedGistCondition;
     };
@@ -280,7 +279,6 @@ module.exports = function () {
         }
         var deferred = q.defer();
         var query = {
-            user: user,
             gist_url: gist_url,
             org_cla: !!orgId
         };
@@ -290,11 +288,14 @@ module.exports = function () {
         if (orgId) {
             query.ownerId = orgId;
         }
-        if (userId) {
-            query.userId = userId;
-        }
         if (gist_version) {
             query.gist_version = gist_version;
+        }
+        if (userId) {
+            query.userId = userId;
+        } else {
+            logger.info({ name: 'The userId is empty.', user: user, repoId: repoId, orgId: orgId });
+            query.user = user;
         }
         query = updateQuery(query, sharedGist, date);
         CLA.findOne(query, {}, {
@@ -304,6 +305,14 @@ module.exports = function () {
         }, function (error, cla) {
             if (error) {
                 return deferred.reject(error);
+            }
+            if (cla && cla.user !== user) {
+                cla.user = user;
+                return cla.save().then(function (updatedCla) {
+                    deferred.resolve(updatedCla);
+                }).catch(function (err) {
+                    deferred.reject(err);
+                });
             }
             deferred.resolve(cla);
         });
