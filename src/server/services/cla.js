@@ -311,18 +311,19 @@ module.exports = function () {
     };
 
     var getPullRequestFiles = function (repo, owner, number, token) {
+        var arg = {
+            repo: repo,
+            owner: owner,
+            number: number,
+            noCache: true
+        };
         return github.call({
             obj: 'pullRequests',
             fun: 'getFiles',
-            arg: {
-                repo: repo,
-                owner: owner,
-                number: number,
-                noCache: true
-            },
+            arg: arg,
             token: token
         }).then(function (resp) {
-            return resp.data;
+            return resp;
         });
     };
 
@@ -334,12 +335,23 @@ module.exports = function () {
             if (typeof item.minFileChanges !== 'number' && typeof item.minCodeChanges !== 'number') {
                 return true;
             }
-            var noCache = true;
-            return getPR(owner, repo, number, token, noCache).then(function (pullRequest) {
-                if (typeof item.minFileChanges === 'number' && pullRequest.changed_files >= item.minFileChanges) {
+            return getPullRequestFiles(repo, owner, number, token).then(function (resp) {
+                var files = resp.data;
+                if (!Array.isArray(files)) {
+                    logger.info(resp, repo, owner, number);
+                    throw new Error('Cannot get pull request.');
+                }
+                if (typeof item.minFileChanges === 'number' && files.length >= item.minFileChanges) {
                     return true;
                 }
-                return typeof item.minCodeChanges === 'number' && pullRequest.additions + pullRequest.deletions >= item.minCodeChanges;
+                if (typeof item.minCodeChanges === 'number') {
+                    var sum = 0;
+                    return files.some(function (file) {
+                        sum += file.changes;
+                        return sum >= item.minCodeChanges;
+                    });
+                }
+                return false;
             });
         });
     };
