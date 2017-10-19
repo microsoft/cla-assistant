@@ -565,6 +565,7 @@ describe('', function () {
                     repo: 'Hello-World',
                     owner: 'octocat',
                     user: 'user',
+                    userId: 3,
                     number: undefined
                 });
                 cb(null, true);
