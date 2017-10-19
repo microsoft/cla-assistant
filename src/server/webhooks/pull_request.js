@@ -48,7 +48,7 @@ function updateStatusAndComment(args) {
 function handleWebHook(args) {
     cla.isClaRequired(args, function (error, isClaRequired) {
         if (error) {
-            return log.error(error);
+            return;
         }
         if (!isClaRequired) {
             status.updateForClaNotRequired(args);
