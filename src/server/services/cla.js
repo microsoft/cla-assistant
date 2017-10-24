@@ -51,6 +51,7 @@ module.exports = function () {
                 } catch (e) {
                     logger.warn(new Error(e).stack);
                 }
+                logger.info({ name: 'CLAAssistantGithubCall', path: path, token: token ? token.slice(0, 4) + '***' : '', remaining: res && res.headers ? res.headers['x-ratelimit-remaining'] : '' });
                 deferred.resolve(data);
             });
         });

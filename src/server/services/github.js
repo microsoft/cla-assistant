@@ -8,10 +8,16 @@ var stringify = require('json-stable-stringify');
 
 // var githubApi;
 
-function callGithub(github, obj, fun, arg, stringArgs, done) {
-    var cacheKey = stringArgs;
-    var cachedRes = arg.noCache ? null : cache.get(cacheKey);
+function callGithub(github, obj, fun, arg, token, done) {
+    var noCache = arg.noCache;
     delete arg.noCache;
+    var cacheKey = stringify({
+        obj: obj,
+        fun: fun,
+        arg: arg,
+        token: token
+    });;
+    var cachedRes = noCache ? null : cache.get(cacheKey);
     if (cachedRes && config.server.cache_time > 0 && typeof done === 'function') {
         if (cachedRes.meta) {
             cachedRes.data.meta = cachedRes.meta;
@@ -27,7 +33,7 @@ function callGithub(github, obj, fun, arg, stringArgs, done) {
                 meta: res && res.meta ? res.meta : undefined
             }, 60000 * config.server.cache_time);
         }
-
+        logger.info({ name: 'CLAAssistantGithubCall', arg: JSON.stringify(arg), token: token ? token.slice(0, 4) + '***' : '', remaining: res && res.meta ? res.meta['x-ratelimit-remaining'] : '' });
         if (typeof done === 'function') {
             done(err, res);
             // cacheMissCount++;
@@ -67,15 +73,6 @@ var githubService = {
         var obj = call.obj;
         var token = call.token;
 
-        var argWithoutNoCache = Object.assign({}, arg);
-        delete argWithoutNoCache.noCache;
-
-        var stringArgs = stringify({
-            obj: call.obj,
-            fun: call.fun,
-            arg: argWithoutNoCache,
-            token: call.token
-        });
         var github = newGithubApi();
 
         function collectData(err, res) {
@@ -141,7 +138,7 @@ var githubService = {
         }
 
         setTimeout(function () {
-            callGithub(github, obj, fun, arg, stringArgs, collectData);
+            callGithub(github, obj, fun, arg, token, collectData);
         }, getRateLimitTime(token));
 
         return deferred.promise;
