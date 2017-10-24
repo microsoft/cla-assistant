@@ -33,7 +33,7 @@ function callGithub(github, obj, fun, arg, token, done) {
                 meta: res && res.meta ? res.meta : undefined
             }, 60000 * config.server.cache_time);
         }
-        logger.info({ name: 'CLAAssistantGithubCall', arg: JSON.stringify(arg), token: token ? token.slice(0, 4) + '***' : '', remaining: res && res.meta ? res.meta['x-ratelimit-remaining'] : '' });
+        logger.info({ name: 'CLAAssistantGithubCall', obj: obj, fun: fun, arg: JSON.stringify(arg), token: token ? token.slice(0, 4) + '***' : '', remaining: res && res.meta ? res.meta['x-ratelimit-remaining'] : '' });
         if (typeof done === 'function') {
             done(err, res);
             // cacheMissCount++;
