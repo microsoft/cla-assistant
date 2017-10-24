@@ -26,6 +26,7 @@ log = bunyan.createLogger({
 if (config.server.appInsights) {
     appInsights.setup(config.server.appInsights)
         .setAutoCollectConsole(true)
+        .setAutoCollectDependencies(false)
         .start();
 }
 

@@ -32,7 +32,6 @@ function checkToken(accessToken, cb) {
     };
 
     github.call(args, function (err, data) {
-        logger.info('err: ', err, ' data: ', data);
         if (err || (data && data.scopes && data.scopes.indexOf('write:repo_hook') < 0) || !data) {
             err = err || 'You have not enough rights to call this API';
         }
