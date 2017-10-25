@@ -294,14 +294,17 @@ describe('webhook pull request', function () {
 
 		sinon.stub(pullRequest, 'badgeComment', function () {});
 		sinon.stub(pullRequest, 'deleteComment', function () { });
-		sinon.stub(status, 'update', function (args) {
+		sinon.stub(status, 'update', function (args, done) {
 			assert(args.owner);
 			assert(args.repo);
 			assert(args.number);
 			assert(args.signed !== undefined);
 			assert(args.token);
+			done();
 		});
-		sinon.stub(status, 'updateForClaNotRequired', function () { });
+		sinon.stub(status, 'updateForClaNotRequired', function (args, done) {
+			done();
+		});
 
 		sinon.stub(logger, 'error', function (msg) {
 			assert(msg);

@@ -717,6 +717,16 @@ module.exports = function () {
             return isSignificantPullRequest(args.repo, args.owner, args.number, args.token).then(function (isSignificant) {
                 done(null, isSignificant);
             }).catch(done);
+        },
+
+        isEmployee: function (userId, done) {
+            return CLA.findOne({
+                userId: userId,
+                custom_fields: { $regex: 'Microsoft employee or intern' },
+                end_at: { $exists: false }
+            }, function (err, signature) {
+                done(err, !!signature);
+            });
         }
     };
     return claService;

@@ -152,6 +152,7 @@ describe('pullRequest:badgeComment', function() {
     var direct_call_data, assertionCallBack;
     cla_config.server.github.user = 'cla-assistant';
     cla_config.server.github.pass = 'secret_pass';
+    var noopCallback = function () { };
 
     beforeEach(function() {
         cla_config.server.github.token = 'xyz';
@@ -184,7 +185,7 @@ describe('pullRequest:badgeComment', function() {
             it_done();
         };
 
-        pullRequest.badgeComment('login', 'myRepo', 1);
+        pullRequest.badgeComment('login', 'myRepo', 1, false, {}, noopCallback);
     });
 
     it('should edit comment with cla-assistant user', function(it_done) {
@@ -197,7 +198,7 @@ describe('pullRequest:badgeComment', function() {
             it_done();
         };
 
-        pullRequest.badgeComment('login', 'myRepo', 1);
+        pullRequest.badgeComment('login', 'myRepo', 1, false, {}, noopCallback);
     });
 
     it('should add a note to the comment if there is a committer who is not a github user', function(it_done) {
@@ -214,7 +215,7 @@ describe('pullRequest:badgeComment', function() {
             signed: [],
             not_signed: ['user1'],
             unknown: ['user1']
-        });
+        }, noopCallback);
     });
 
     it('should add a note to the comment with name of ONE committer who has no github account', function(it_done) {
@@ -229,7 +230,7 @@ describe('pullRequest:badgeComment', function() {
             signed: [],
             not_signed: ['user1'],
             unknown: ['user1']
-        });
+        }, noopCallback);
     });
 
     it('should add a note to the comment with names of MULTIPLE committers who has no github account', function(it_done) {
@@ -244,7 +245,7 @@ describe('pullRequest:badgeComment', function() {
             signed: [],
             not_signed: ['user1', 'user2'],
             unknown: ['user1', 'user2']
-        });
+        }, noopCallback);
     });
 
     it('should write a list of signed and not signed users on create', function(it_done) {
@@ -262,7 +263,7 @@ describe('pullRequest:badgeComment', function() {
         pullRequest.badgeComment('login', 'myRepo', 1, false, {
             signed: ['user1'],
             not_signed: ['user2']
-        });
+        }, noopCallback);
     });
 
     it('should NOT write a list of signed and not signed users on create if there is only one committer', function(it_done) {
@@ -279,7 +280,7 @@ describe('pullRequest:badgeComment', function() {
         pullRequest.badgeComment('login', 'myRepo', 1, false, {
             signed: [],
             not_signed: ['user2']
-        });
+        }, noopCallback);
     });
 
     it('should write a list of signed and not signed users on edit', function(it_done) {
@@ -297,7 +298,7 @@ describe('pullRequest:badgeComment', function() {
         pullRequest.badgeComment('login', 'myRepo', 1, false, {
             signed: ['user1'],
             not_signed: ['user2']
-        });
+        }, noopCallback);
     });
 });
 
