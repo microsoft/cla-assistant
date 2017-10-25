@@ -150,14 +150,10 @@ function collectMetrics(userId, startTime, signed) {
     var diffTime = process.hrtime(startTime);
     log.metric('CLAAssistantPullRequestDuration', diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)));
     return cla.isEmployee(userId, function (err, isEmployee) {
+        log.metric('CLAAssistantPullRequest', isEmployee ? 0 : 1);
         if (isEmployee) {
-            return log.metric('CLAAssistantPullRequest', 0);
+            return;
         }
-        log.metric('CLAAssistantPullRequest', 1);
-        if (signed) {
-            log.metric('CLAAssistantAlreadySignedPullRequest', 1);
-        } else {
-            log.metric('CLAAssistantCLARequiredPullRequest', 1);
-        }
+        log.metric(signed ? 'CLAAssistantAlreadySignedPullRequest' : 'CLAAssistantCLARequiredPullRequest', 1);
     });
 }

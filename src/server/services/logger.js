@@ -29,7 +29,8 @@ if (config.server.appInsights) {
         .setAutoCollectDependencies(false)
         .start();
     log.metric = function (name, value) {
-        return appInsights.defaultClient.trackMetric({ name: name, value: value });
+        var client = appInsights.defaultClient;
+        return client.trackMetric({ name: name, value: value });
     };
 } else {
     log.metric = function (name, value) {

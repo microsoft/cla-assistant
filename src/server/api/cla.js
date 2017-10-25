@@ -496,6 +496,14 @@ module.exports = {
                 }
                 var timeDiff = process.hrtime(startTime);
                 log.metric('CLAAssistantUserSignDuration', timeDiff[0] * 1000 + Math.round(timeDiff[1] / Math.pow(10, 6)));
+                prStore.findPullRequests({
+                    userId: req.args.userId
+                }, function (err, pullRequests) {
+                    if (err) {
+                        return log.error(err, { args: JSON.stringify(args) });
+                    }
+                    log.metric('CLAAssistantSignedPullRequest', pullRequests.length);
+                });
             });
             // Signing page will get a timeout error if waiting for validating pull requests.
             done(null, signed);
