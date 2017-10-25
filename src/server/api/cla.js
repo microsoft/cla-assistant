@@ -483,7 +483,8 @@ module.exports = {
             args.custom_fields = req.args.custom_fields;
         }
         var self = this;
-
+        log.info({ name: 'CLAAssistantUserSign', args: JSON.stringify(args) });
+        var startTime = process.hrtime();
         cla.sign(args, function (err, signed) {
             if (err) {
                 return done(err);
@@ -493,6 +494,8 @@ module.exports = {
                 if (validateErr) {
                     log.error(validateErr);
                 }
+                var timeDiff = process.hrtime(startTime);
+                log.metric('CLAAssistantUserSignDuration', timeDiff[0] * 1000 + Math.round(timeDiff[1] / Math.pow(10, 6)));
             });
             // Signing page will get a timeout error if waiting for validating pull requests.
             done(null, signed);
