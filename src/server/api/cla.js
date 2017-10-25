@@ -185,6 +185,7 @@ function updateUsersPullRequests(args) {
             }
         }
         prepareForValidation(args.item, user);
+        log.metric('CLAAssistantSignedPullRequest', user.requests.length);
     });
 
     function prepareForValidation(item, user) {
@@ -564,7 +565,8 @@ let ClaApi = {
             args.custom_fields = req.args.custom_fields;
         }
         let self = this;
-
+        log.info({ name: 'CLAAssistantUserSign', args: JSON.stringify(args) });
+        let startTime = new Date();
         self.getLinkedItem({
             args: {
                 repo: args.repo,
@@ -585,6 +587,7 @@ let ClaApi = {
                     return done(err);
                 }
                 updateUsersPullRequests(args);
+                log.metric('CLAAssistantUserSignDuration', (new Date() - startTime) / 1000);
                 done(null, signed);
             });
         });

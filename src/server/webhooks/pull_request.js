@@ -48,7 +48,7 @@ function storeRequest(committers, repo, owner, number) {
     });
 }
 
-function updateStatusAndComment(args) {
+function updateStatusAndComment(args, done) {
     repoService.getPRCommitters(args, function (err, committers) {
         if (!err && committers && committers.length > 0) {
             cla.check(args, function (error, signed, user_map) {
@@ -56,25 +56,31 @@ function updateStatusAndComment(args) {
                     log.warn(new Error(error).stack);
                 }
                 args.signed = signed;
-                status.update(args);
-                // if (!signed) {
-                pullRequest.badgeComment(
-                    args.owner,
-                    args.repo,
-                    args.number,
-                    signed,
-                    user_map
-                );
                 if (user_map && user_map.not_signed) {
                     storeRequest(user_map.not_signed, args.repo, args.owner, args.number);
                 }
-                // }
+                status.update(args, function (err) {
+                    if (err) {
+                        log.error(err, { args: JSON.stringify(args) });
+                    }
+                    if (config.server.feature_flag.close_comment === 'true' && signed) {
+                        return done();
+                    }
+                    pullRequest.badgeComment(
+                        args.owner,
+                        args.repo,
+                        args.number,
+                        signed,
+                        user_map,
+                        done
+                    );
+                });
             });
         } else {
             if (!args.handleCount || args.handleCount < 2) {
                 args.handleCount = args.handleCount ? ++args.handleCount : 1;
                 setTimeout(function () {
-                    updateStatusAndComment(args);
+                    updateStatusAndComment(args, done);
                 }, 10000 * args.handleCount * args.handleDelay);
             } else {
                 log.warn(new Error(err).stack, 'PR committers: ', committers, 'called with args: ', args);
@@ -83,28 +89,32 @@ function updateStatusAndComment(args) {
     });
 };
 
-function handleWebHook(args) {
+function handleWebHook(args, done) {
     cla.isClaRequired(args, function (error, isClaRequired) {
         if (error) {
-            return log.error(error);
+            return done(error);
         }
+        args.isClaRequired = isClaRequired;
         if (!isClaRequired) {
-            status.updateForClaNotRequired(args);
-            pullRequest.deleteComment({
-                repo: args.repo,
-                owner: args.owner,
-                number: args.number
+            return status.updateForClaNotRequired(args, function (err) {
+                if (err) {
+                    log.error(err, { args: JSON.stringify(args) });
+                }
+                pullRequest.deleteComment({
+                    repo: args.repo,
+                    owner: args.owner,
+                    number: args.number
+                }, done);
             });
-            return;
         }
-        updateStatusAndComment(args);
+        updateStatusAndComment(args, done);
     });
 }
 
 module.exports = function (req, res) {
     if (['opened', 'reopened', 'synchronize'].indexOf(req.args.action) > -1 && (req.args.repository && req.args.repository.private == false)) {
         if (req.args.pull_request && req.args.pull_request.html_url) {
-            console.log('pull request ' + req.args.action + ' ' + req.args.pull_request.html_url);
+            log.info('pull request ' + req.args.action + ' ' + req.args.pull_request.html_url);
         }
         let args = {
             owner: req.args.repository.owner.login,
@@ -114,8 +124,7 @@ module.exports = function (req, res) {
         };
         args.orgId = req.args.organization ? req.args.organization.id : req.args.repository.owner.id;
         args.handleDelay = req.args.handleDelay != undefined ? req.args.handleDelay : 1; // needed for unitTests
-
-
+        let startTime = process.hrtime();
         setTimeout(function () {
             cla.getLinkedItem(args, function (err, item) {
                 if (!item) {
@@ -131,10 +140,31 @@ module.exports = function (req, res) {
                 if (item.repoId) {
                     args.orgId = undefined;
                 }
-                return handleWebHook(args);
+                return handleWebHook(args, function (err) {
+                    collectMetrics(req.args.pull_request.user.id, startTime, args.signed, req.args.action, args.isClaRequired);
+                });
             });
         }, config.server.github.enforceDelay);
     }
 
     res.status(200).send('OK');
 };
+
+function isRepoEnabled(repository) {
+    return repository && (repository.private === false || config.server.feature_flag.enable_private_repos === 'true');
+}
+
+function collectMetrics(userId, startTime, signed, action, isClaRequired) {
+    let diffTime = process.hrtime(startTime);
+    log.metric('CLAAssistantPullRequestDuration', diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)));
+    if (action !== 'opened') {
+        return;
+    }
+    return cla.isEmployee(userId, function (err, isEmployee) {
+        log.metric('CLAAssistantPullRequest', isEmployee ? 0 : 1);
+        if (isEmployee || !isClaRequired) {
+            return;
+        }
+        log.metric(signed ? 'CLAAssistantAlreadySignedPullRequest' : 'CLAAssistantCLARequiredPullRequest', 1);
+    });
+}

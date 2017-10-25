@@ -330,14 +330,17 @@ describe('webhook pull request', function () {
 
         sinon.stub(pullRequest, 'badgeComment').callsFake(function () { });
         sinon.stub(pullRequest, 'deleteComment').callsFake(function () { });
-		sinon.stub(status, 'update').callsFake(function (args) {
+		sinon.stub(status, 'update').callsFake(function (args, done) {
 			assert(args.owner);
 			assert(args.repo);
 			assert(args.number);
 			assert(args.signed !== undefined);
 			assert(args.token);
+			done();
 		});
-		sinon.stub(status, 'updateForClaNotRequired').callsFake(function () { });
+		sinon.stub(status, 'updateForClaNotRequired').callsFake(function (args, done) {
+			done();
+		});
 
 		sinon.stub(orgService, 'get').callsFake(function (args, done) {
 			assert(args.orgId);

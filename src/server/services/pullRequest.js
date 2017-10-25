@@ -35,7 +35,7 @@ var commentText = function (signed, badgeUrl, claUrl, user_map, recheckUrl) {
 };
 
 module.exports = {
-    badgeComment: function (owner, repo, pullNumber, signed, user_map) {
+    badgeComment: function (owner, repo, pullNumber, signed, user_map, done) {
         var badgeUrl = url.pullRequestBadge(signed);
 
         this.getComment({
@@ -66,6 +66,7 @@ module.exports = {
                     if (e) {
                         log.error(new Error(e).stack);
                     }
+                    done(e);
                 });
             } else if (comment && comment.id) {
                 github.call({
@@ -86,6 +87,7 @@ module.exports = {
                     if (e) {
                         log.error(new Error(e).stack);
                     }
+                    done(e);
                 });
             }
         });
