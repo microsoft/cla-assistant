@@ -126,7 +126,7 @@ module.exports = function (req, res) {
                     args.orgId = undefined;
                 }
                 return handleWebHook(args, function (err) {
-                    collectMetrics(req.args.pull_request.user.id, startTime, args.signed);
+                    collectMetrics(req.args.pull_request.user.id, startTime, args.signed, req.args.action);
                 });
             });
         }, config.server.github.enforceDelay);
@@ -146,9 +146,12 @@ function isRepoEnabled(repository) {
     return repository && (repository.private === false || config.server.feature_flag.enable_private_repos === 'true');
 }
 
-function collectMetrics(userId, startTime, signed) {
+function collectMetrics(userId, startTime, signed, action) {
     var diffTime = process.hrtime(startTime);
     log.metric('CLAAssistantPullRequestDuration', diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)));
+    if (action !== 'opened') {
+        return;
+    }
     return cla.isEmployee(userId, function (err, isEmployee) {
         log.metric('CLAAssistantPullRequest', isEmployee ? 0 : 1);
         if (isEmployee) {
