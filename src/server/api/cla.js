@@ -334,7 +334,10 @@ module.exports = {
     validatePullRequest: function (args, done) {
         cla.getLinkedItem(args, function (error, item) {
             if (error) {
-                return log.error(error);
+                var logArgs = Object.assign({}, args);
+                logArgs.token = logArgs.token ? logArgs.token.slice(0, 4) + '***' : undefined;
+                log.error(error, logArgs);
+                return done();
             }
             args.token = args.token || item.token;
             if (!item.gist) {
