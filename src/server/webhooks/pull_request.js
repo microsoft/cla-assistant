@@ -55,6 +55,7 @@ function handleWebHook(args, done) {
         if (error) {
             return done(error);
         }
+        args.isClaRequired = isClaRequired;
         if (!isClaRequired) {
             return status.updateForClaNotRequired(args, function (err) {
                 if (err) {
@@ -126,7 +127,7 @@ module.exports = function (req, res) {
                     args.orgId = undefined;
                 }
                 return handleWebHook(args, function (err) {
-                    collectMetrics(req.args.pull_request.user.id, startTime, args.signed, req.args.action);
+                    collectMetrics(req.args.pull_request.user.id, startTime, args.signed, req.args.action, args.isClaRequired);
                 });
             });
         }, config.server.github.enforceDelay);
@@ -146,7 +147,7 @@ function isRepoEnabled(repository) {
     return repository && (repository.private === false || config.server.feature_flag.enable_private_repos === 'true');
 }
 
-function collectMetrics(userId, startTime, signed, action) {
+function collectMetrics(userId, startTime, signed, action, isClaRequired) {
     var diffTime = process.hrtime(startTime);
     log.metric('CLAAssistantPullRequestDuration', diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)));
     if (action !== 'opened') {
@@ -154,7 +155,7 @@ function collectMetrics(userId, startTime, signed, action) {
     }
     return cla.isEmployee(userId, function (err, isEmployee) {
         log.metric('CLAAssistantPullRequest', isEmployee ? 0 : 1);
-        if (isEmployee) {
+        if (isEmployee || !isClaRequired) {
             return;
         }
         log.metric(signed ? 'CLAAssistantAlreadySignedPullRequest' : 'CLAAssistantCLARequiredPullRequest', 1);
