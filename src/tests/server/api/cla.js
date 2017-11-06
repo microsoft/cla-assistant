@@ -9,6 +9,7 @@ global.config = require('../../../config');
 
 // models
 var Repo = require('../../../server/documents/repo').Repo;
+var PullRequest = require('../../../server/documents/pullRequest').PullRequest;
 
 //services
 var github = require('../../../server/services/github');
@@ -18,6 +19,7 @@ var org_service = require('../../../server/services/org');
 var statusService = require('../../../server/services/status');
 var prService = require('../../../server/services/pullRequest');
 var log = require('../../../server/services/logger');
+var prStore = require('../../../server/services/pullRequestStore');
 
 // Test data
 var testData = require('../testData').data;
@@ -62,11 +64,41 @@ describe('', function () {
                     number: 1,
                     head: {
                         sha: 'sha1'
+                    },
+                    user: {
+                        login: "submitter",
+                        id: 12345678
+                    },
+                    created_at: "2017-09-08T16:27:34Z",
+                    base: {
+                        repo: {
+                            id: 13579111,
+                            name: "repo",
+                            owner: {
+                                login: "owner",
+                                id: 24681012
+                            }
+                        }
                     }
                 }, {
                     number: 2,
                     head: {
                         sha: 'sha2'
+                    },
+                    user: {
+                        login: "submitter",
+                        id: 12345678
+                    },
+                    created_at: "2017-09-08T16:27:34Z",
+                    base: {
+                        repo: {
+                            id: 13579111,
+                            name: "repo",
+                            owner: {
+                                login: "owner",
+                                id: 24681012
+                            }
+                        }
                     }
                 }],
                 callMarkdown: {
@@ -90,7 +122,8 @@ describe('', function () {
             },
             orgService: {
                 get: JSON.parse(JSON.stringify(testData.org_from_db)), //clone object
-            }
+            },
+            prStore: {}
         };
         error = {
             cla: {
@@ -107,7 +140,8 @@ describe('', function () {
             },
             orgService: {
                 get: null
-            }
+            },
+            prStore: {}
         };
 
 
@@ -1104,62 +1138,36 @@ describe('', function () {
             req = {
                 args: {
                     repo: 'Hello-World',
-                    owner: 'octocat'
+                    owner: 'octocat',
+                    userId: 'userId'
                 }
             };
-            error.cla_api = {};
-            sinon.stub(cla_api, 'validateSharedGistItems', function (req, cb) {
-                cb(error.cla_api.validateSharedGistItems);
+            sinon.stub(cla_api, 'validatePullRequestsFromGitHub', function (req, cb) {
+                return cb();
             });
-            sinon.stub(cla_api, 'validateOrgPullRequests', function (req) { });
-            sinon.stub(cla_api, 'validatePullRequests', function (req) { });
+            sinon.stub(cla_api, 'validatePullRequestsFromCache', function (userId, owner, repo, cb) {
+                return cb();
+            });
         });
 
         afterEach(function () {
-            error.cla_api = {};
-            cla_api.validateSharedGistItems.restore();
-            cla_api.validateOrgPullRequests.restore();
-            cla_api.validatePullRequests.restore();
+            cla_api.validatePullRequestsFromGitHub.restore();
+            cla_api.validatePullRequestsFromCache.restore();
         });
 
-        it('should validate all pull requests of repos and orgs shared the same gist', function (it_done) {
-            resp.cla.getLinkedItem = {
-                sharedGist: true,
-                token: 'token'
-            };
-            cla_api.validateRelatedPullRequests(req, function (err, res) {
-                assert.ifError(err);
-                assert(cla_api.validateSharedGistItems.calledWithMatch({
-                    args: {
-                        token: resp.cla.getLinkedItem.token
-                    }
-                }));
+        it('should validate pull requests from cache when CACHE_PULL_REQUESTS is configured \'true\'', function (it_done) {
+            global.config.server.feature_flag.cache_pull_requests = 'true';
+            cla_api.validateRelatedPullRequests(req, function () {
+                assert(cla_api.validatePullRequestsFromCache.called);
+                global.config.server.feature_flag.cache_pull_requests = undefined;
                 it_done();
             });
         });
 
-        it('should validate org pull requests using token of linked org', function (it_done) {
-            resp.cla.getLinkedItem = resp.orgService.get;
-            cla_api.validateRelatedPullRequests(req, function (err, res) {
-                assert.ifError(err);
-                assert(cla_api.validateOrgPullRequests.calledWithMatch({
-                    args: {
-                        token: resp.orgService.get.token
-                    }
-                }));
-                it_done();
-            });
-        });
-
-        it('should validate repo pull requests using token of linked repo', function (it_done) {
-            resp.cla.getLinkedItem = resp.repoService.get;
-            cla_api.validateRelatedPullRequests(req, function (err, res) {
-                assert.ifError(err);
-                assert(cla_api.validatePullRequests.calledWithMatch({
-                    args: {
-                        token: resp.orgService.get.token
-                    }
-                }));
+        it('should validate pull requests from Github when CACHE_PULL_REQUESTS is NOT configured to \'true\'', function (it_done) {
+            global.config.server.feature_flag.cache_pull_requests = undefined;
+            cla_api.validateRelatedPullRequests(req, function () {
+                assert(cla_api.validatePullRequestsFromGitHub.called);
                 it_done();
             });
         });
@@ -1175,20 +1183,22 @@ describe('', function () {
                 number: 1,
                 token: 'token'
             };
-            resp.cla.check = {
+            resp.cla.checkPullRequestSignatures = {
                 gist: 'github/gist',
-                signed: false,
-                user_map: {
-                    signed: ['a'],
-                    not_signed: ['b'],
-                    unknown: ['c']
+                result: {
+                    signed: false,
+                    user_map: {
+                        signed: ['a'],
+                        not_signed: ['b'],
+                        unknown: ['c']
+                    }
                 }
             };
             resp.cla.getLinkedItem = Object.assign({}, testData.repo_from_db);
             error.cla.isClaRequired = null;
             resp.cla.isClaRequired = true;
-            sinon.stub(cla, 'check', function (args, cb) {
-                cb(null, resp.cla.check.signed, resp.cla.check.user_map);
+            sinon.stub(cla, 'checkPullRequestSignatures', function (args, cb) {
+                cb(null, resp.cla.checkPullRequestSignatures.result);
             });
             sinon.stub(cla, 'isClaRequired', function (args, cb) {
                 cb(error.cla.isClaRequired, resp.cla.isClaRequired);
@@ -1211,7 +1221,7 @@ describe('', function () {
         });
 
         afterEach(function () {
-            cla.check.restore();
+            cla.checkPullRequestSignatures.restore();
             cla.isClaRequired.restore();
             statusService.update.restore();
             statusService.updateForNullCla.restore();
@@ -1223,7 +1233,7 @@ describe('', function () {
         it('should update status and edit comment when the repo is NOT linked with a null CLA and the pull request is significant', function (it_done) {
             cla_api.validatePullRequest(args, function () {
                 assert(statusService.update.calledWithMatch({
-                    signed: resp.cla.check.signed,
+                    signed: resp.cla.checkPullRequestSignatures.result.signed,
                     repo: 'Hello-World',
                     owner: 'octocat',
                     sha: 'abcde',
@@ -1233,8 +1243,8 @@ describe('', function () {
                     repo: 'Hello-World',
                     owner: 'octocat',
                     number: 1,
-                    signed: resp.cla.check.signed,
-                    user_map: resp.cla.check.user_map
+                    signed: resp.cla.checkPullRequestSignatures.result.signed,
+                    user_map: resp.cla.checkPullRequestSignatures.result.user_map
                 }));
                 it_done();
             });
@@ -1246,7 +1256,7 @@ describe('', function () {
                 assert(statusService.updateForNullCla.called);
                 assert(prService.deleteComment.called);
                 assert(!cla.isClaRequired.called);
-                assert(!cla.check.called);
+                assert(!cla.checkPullRequestSignatures.called);
                 it_done();
             });
         });
@@ -1256,7 +1266,7 @@ describe('', function () {
             cla_api.validatePullRequest(args, function (err) {
                 assert(statusService.updateForClaNotRequired.called);
                 assert(prService.deleteComment.called);
-                assert(!cla.check.called);
+                assert(!cla.checkPullRequestSignatures.called);
                 assert(!statusService.updateForNullCla.called);
                 it_done();
             });
@@ -1508,6 +1518,140 @@ describe('', function () {
                 assert(cla.terminate.called);
                 assert(cla_api.validateRelatedPullRequests.called);
                 assert(log.error.called);
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:validatePullRequestsFromGitHub', function () {
+        beforeEach(function () {
+            req = {
+                args: {
+                    repo: 'Hello-World',
+                    owner: 'octocat'
+                }
+            };
+            error.cla_api = {};
+            sinon.stub(cla_api, 'validateSharedGistItems', function (req, cb) {
+                cb(error.cla_api.validateSharedGistItems);
+            });
+            sinon.stub(cla_api, 'validateOrgPullRequests', function (req) { });
+            sinon.stub(cla_api, 'validatePullRequests', function (req) { });
+        });
+
+        afterEach(function () {
+            error.cla_api = {};
+            cla_api.validateSharedGistItems.restore();
+            cla_api.validateOrgPullRequests.restore();
+            cla_api.validatePullRequests.restore();
+        });
+
+        it('should validate all pull requests of repos and orgs shared the same gist', function (it_done) {
+            resp.cla.getLinkedItem = {
+                sharedGist: true,
+                token: 'token'
+            };
+            cla_api.validatePullRequestsFromGitHub(req, function (err, res) {
+                assert.ifError(err);
+                assert(cla_api.validateSharedGistItems.calledWithMatch({
+                    args: {
+                        token: resp.cla.getLinkedItem.token
+                    }
+                }));
+                it_done();
+            });
+        });
+
+        it('should validate org pull requests using token of linked org', function (it_done) {
+            resp.cla.getLinkedItem = resp.orgService.get;
+            cla_api.validatePullRequestsFromGitHub(req, function (err, res) {
+                assert.ifError(err);
+                assert(cla_api.validateOrgPullRequests.calledWithMatch({
+                    args: {
+                        token: resp.orgService.get.token
+                    }
+                }));
+                it_done();
+            });
+        });
+
+        it('should validate repo pull requests using token of linked repo', function (it_done) {
+            resp.cla.getLinkedItem = resp.repoService.get;
+            cla_api.validatePullRequestsFromGitHub(req, function (err, res) {
+                assert.ifError(err);
+                assert(cla_api.validatePullRequests.calledWithMatch({
+                    args: {
+                        token: resp.orgService.get.token
+                    }
+                }));
+                it_done();
+            });
+        });
+    });
+
+    describe('cla:validatePullRequestsFromCache', function () {
+        var args = null;
+        beforeEach(function () {
+            args = {
+                repo: 'Hello-World',
+                owner: 'octocat',
+                userId: 'userId'
+            };
+            error.cla.getLinkedItem = null;
+            resp.cla.getLinkedItem = {
+                repoId: '123',
+                repo: 'Hello-World',
+                owner: 'octocat',
+                token: 'token'
+            };
+            error.prStore.findPullRequests = null;
+            resp.prStore.findPullRequests = [{
+                userId: 'userId',
+                repoId: '123',
+                number: '1'
+            }, {
+                userId: 'userId',
+                repoId: '123',
+                number: '2'
+            }];
+            sinon.stub(cla_api, 'validatePullRequest', function (req, callback) {
+                return callback();
+            });
+            sinon.stub(prStore, 'findPullRequests', function (query, callback) {
+                return callback(error.prStore.findPullRequests, resp.prStore.findPullRequests);
+            });
+        });
+
+        afterEach(function () {
+            cla_api.validatePullRequest.restore();
+            prStore.findPullRequests.restore();
+        });
+
+        it('should validate the user\'s pull requests found in the caches', function (it_done) {
+            cla_api.validatePullRequestsFromCache(args.userId, args.owner, args.repo, function (err) {
+                assert.ifError(err);
+                assert(prStore.findPullRequests.called);
+                assert(cla_api.validatePullRequest.callCount === 2);
+                it_done();
+            });
+        });
+
+        it('should send error if get linked repo/org fail', function (it_done) {
+            error.cla.getLinkedItem = 'Get linked item fail';
+            cla_api.validatePullRequestsFromCache(args.userId, args.owner, args.repo, function (err) {
+                assert(err === error.cla.getLinkedItem);
+                assert(!prStore.findPullRequests.called);
+                assert(!cla_api.validatePullRequest.called);
+                it_done();
+            });
+        });
+
+        it('should send error if get cached pull request fail', function (it_done) {
+            error.prStore.findPullRequests = 'Get cached pull request fail';
+            cla_api.validatePullRequestsFromCache(args.userId, args.owner, args.repo, function (err) {
+                assert(err === error.prStore.findPullRequests);
+                assert(prStore.findPullRequests.called);
+                assert(!cla_api.validatePullRequest.called);
                 it_done();
             });
         });

@@ -11,6 +11,7 @@ var Repo = require('../../../server/documents/repo').Repo;
 var github = require('../../../server/services/github');
 var orgService = require('../../../server/services/org');
 var logger = require('../../../server/services/logger');
+var config = require('../../../config');
 
 // service under test
 var repo = require('../../../server/services/repo');
@@ -564,6 +565,49 @@ describe('repo:getPRCommitters', function () {
 
             it_done();
             repo.getGHRepo.restore();
+        });
+    });
+
+    it('should just get pull request submitter as committer when REQUIRED_SIGNEES is set to \'submitter\'', function (it_done) {
+        config.server.feature_flag.required_signees = 'submitter';
+        var args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            number: '1'
+        };
+        repo.getPRCommitters(args, function (err, committers) {
+            assert.ifError(err);
+            assert(committers.length === 1);
+            assert(committers[0].name === 'octocat' && committers[0].id === 1);
+            assert(!github.call.calledWithMatch({
+                obj: 'pullRequests',
+                fun: 'getCommits'
+            }));
+            assert(!github.call.calledWithMatch({
+                obj: 'repos',
+                fun: 'getCommit'
+            }));
+            config.server.feature_flag.required_signees = undefined;
+            it_done();
+        });
+    });
+
+    it('should get submitter and committers when REQUIRED_SIGNEES is set to \'submiter, committers\'', function (it_done) {
+        config.server.feature_flag.required_signees = 'submitter, committers';
+        var args = {
+            repo: 'myRepo',
+            owner: 'owner',
+            number: '1'
+        };
+        repo.getPRCommitters(args, function (err, committers) {
+            assert.ifError(err);
+            assert(committers.length === 2);
+            assert(committers[0].name === 'octocat' && committers[0].id === 1);
+            assert(github.call.calledWithMatch({
+                obj: 'pullRequests',
+                fun: 'getCommits'
+            }));
+            it_done();
         });
     });
 });

@@ -87,6 +87,11 @@ module.exports = {
             admin_only: ['/api/cla/addSignature', '/api/cla/hasSignature', '/api/cla/terminateSignature', '/api/cla/validate', '/api/cla/getGist']
         },
 
+        feature_flag: {
+            cache_pull_requests: process.env.CACHE_PULL_REQUESTS,
+            required_signees: process.env.REQUIRED_SIGNEES
+        },
+
         static: [
             path.join(__dirname, 'bower'),
             path.join(__dirname, 'client')
