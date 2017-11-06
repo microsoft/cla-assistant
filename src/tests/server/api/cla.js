@@ -1599,7 +1599,6 @@ describe('', function () {
             error.cla.terminate = 'Cannot find cla record';
             cla_api.terminateSignature(req, function (err) {
                 assert(err === error.cla.terminate);
-                assert(log.error.called);
                 it_done();
             });
         });

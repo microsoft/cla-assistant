@@ -82,6 +82,8 @@ module.exports = {
 
         sentry_dsn: process.env.SENTRY_DSN,
 
+        appInsights: process.env.AZURE_APP_INSIGHTS,
+
         api_access: {
             free: ['/api/cla/get', '/api/cla/getLinkedItem'],
             external: ['/api/cla/getAll'],

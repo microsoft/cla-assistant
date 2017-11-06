@@ -1,4 +1,5 @@
 var raven = require('raven');
+var appInsights = require('applicationinsights');
 var bunyan = require('bunyan');
 var BunyanSlack = require('bunyan-slack');
 var SentryStream = require('bunyan-sentry-stream').SentryStream;
@@ -21,6 +22,13 @@ log = bunyan.createLogger({
         stream: process.stdout
     }]
 });
+
+if (config.server.appInsights) {
+    appInsights.setup(config.server.appInsights)
+        .setAutoCollectConsole(true)
+        .setAutoCollectDependencies(false)
+        .start();
+}
 
 try {
     log.addStream({
