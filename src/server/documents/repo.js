@@ -23,14 +23,19 @@ var indexOptions = {
 
 var Repo = mongoose.model('Repo', RepoSchema);
 
-Repo.collection.dropAllIndexes(function (err, results) {
-    if (err) {
-        logger.warn('Repo collection dropAllIndexes error: ', err);
-        logger.warn('dropAllIndexes results: ', results);
-    }
-});
+/**
+ *  TODO: Remove this for now because Document DB don't support creating index with this many index properties.
+ *        And dropAllIndexes() will exclude any query path, which means almost all queries will not work.
+ * */
 
-Repo.collection.createIndex(index, indexOptions);
+// Repo.collection.dropAllIndexes(function (err, results) {
+//     if (err) {
+//         logger.warn('Repo collection dropAllIndexes error: ', err);
+//         logger.warn('dropAllIndexes results: ', results);
+//     }
+// });
+
+// Repo.collection.createIndex(index, indexOptions);
 
 module.exports = {
     Repo: Repo

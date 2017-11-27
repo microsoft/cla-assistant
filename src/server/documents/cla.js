@@ -34,13 +34,18 @@ var indexOptions = {
 
 var CLA = mongoose.model('CLA', CLASchema);
 
-CLA.collection.dropAllIndexes(function (err, results) {
-    if (err) {
-        logger.warn('CLA collection dropAllIndexes error: ', err);
-        logger.warn('dropAllIndexes results: ', results);
-    }
-});
-CLA.collection.createIndex(index, indexOptions);
+/**
+ *  TODO: Remove this for now because Document DB don't support creating index with this many index properties.
+ *        And dropAllIndexes() will exclude any query path, which means almost all queries will not work.
+ * */
+
+// CLA.collection.dropAllIndexes(function (err, results) {
+//     if (err) {
+//         logger.warn('CLA collection dropAllIndexes error: ', err);
+//         logger.warn('dropAllIndexes results: ', results);
+//     }
+// });
+// CLA.collection.createIndex(index, indexOptions);
 
 module.exports = {
     CLA: CLA
