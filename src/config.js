@@ -34,7 +34,7 @@ module.exports = {
             commit_bots: ['web-flow'],
 
             //delay reaction on webhook
-            enforceDelay: process.env.GITHUB_DELAY || 1000 * 5,
+            enforceDelay: parseInt(process.env.GITHUB_DELAY || '5000', 10),
 
             //slow down API calls in order to avoid abuse rate limit
             timeToWait: process.env.GITHUB_TIME_TO_WAIT || 1000
