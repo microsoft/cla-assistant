@@ -167,6 +167,9 @@ function validatePullRequest(args, done) {
 function updateUsersPullRequests(args) {
     User.findOne({ name: args.user }, (err, user) => {
         if (err || !user || !user.requests || user.requests.length < 1) {
+            if (config.server.feature_flag.pre_populate_user_pull_request) {
+                return;
+            }
             let req = {
                 args: {
                     gist: args.item.gist,

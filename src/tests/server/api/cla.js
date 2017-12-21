@@ -492,7 +492,7 @@ describe('', function () {
 
         it('should update status of all open pull requests for the repo if user model has no requests stored', function (it_done) {
             testUser.requests = undefined;
-
+            global.config.server.feature_flag.pre_populate_user_pull_request = false;
             cla_api.sign(req, function (err, res) {
                 assert.ifError(err);
                 assert.ok(res);
