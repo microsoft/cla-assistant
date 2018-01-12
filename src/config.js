@@ -109,7 +109,8 @@ module.exports = {
 
         static: [
             path.join(__dirname, 'bower'),
-            path.join(__dirname, 'client')
+            path.join(__dirname, 'client'),
+            path.join(__dirname, '..', 'thirdParty')
         ],
 
         api: [
