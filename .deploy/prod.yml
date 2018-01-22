@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cla-prod
+  name: cla-dnf-prod
 spec:
   replicas: 3
   selector:
@@ -11,12 +11,12 @@ spec:
   template:
     metadata:
       labels:
-        app: cla
+        app: cla-dnf
         env: prod
     spec:
       containers:
-      - image: ospoaksprod.azurecr.io/cla-prod:__BUILD_BUILDID__
-        name: cla-prod
+      - image: ospoaksprod.azurecr.io/cla-dnf-prod:__BUILD_BUILDID__
+        name: cla-dnf-prod
         ports:
         - containerPort: 5000
         readinessProbe:
@@ -32,48 +32,43 @@ spec:
         - name: PROTOCOL
           value: https
         - name: HOST
-          value: cla.opensource.microsoft.com
+          value: cla.dotnetfoundation.org
         - name: GITHUB_CLIENT
           valueFrom:
             secretKeyRef:
-              name: github-oauth-microsoft-cla-secret
+              name: github-oauth-dnf-cla-secret
               key: clientId
         - name: GITHUB_SECRET
           valueFrom:
             secretKeyRef:
-              name: github-oauth-microsoft-cla-secret
+              name: github-oauth-dnf-cla-secret
               key: value
         - name: GITHUB_USER
-          value: msftclas
+          value: dnfclas
         - name: GITHUB_TOKEN
           valueFrom:
             secretKeyRef:
-              name: github-msftclas-token
+              name: github-dnfclas-token
               key: value
         - name: GITHUB_PASS
           valueFrom:
             secretKeyRef:
-              name: github-msftclas-token
+              name: github-dnfclas-token
               key: value
         - name: MONGODB
           valueFrom:
             secretKeyRef:
-              name: msftclas-docdb-prod
+              name: cla-dnf-docdb-prod
               key: value
         - name: AZURE_APP_INSIGHTS
           valueFrom:
             secretKeyRef:
-              name: msftclas-app-insights-prod
-              key: value
-        - name: GITHUB_ADMIN_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: github-msftgits-super-token
+              name: cla-dnf-app-insights-prod
               key: value
         - name: EXTERNAL_QUEUE_URL
           valueFrom:
             secretKeyRef:
-              name: cla-web-hook-event-logic-app-msft-prod
+              name: cla-web-hook-event-logic-app-dnf-prod
               key: value
         - name: GITHUB_APP_ID
           valueFrom:
@@ -86,7 +81,7 @@ spec:
               name: cla-assistant-github-app-private-key-prod
               key: value
         - name: GITHUB_ADMIN_USERS
-          value: msftgits
+          value: 'jongalloway, dnfadmin, MichaelTsengLZ'
         - name: CLOSE_COMMENT
           value: 'true'
         - name: REQUIRED_SIGNEES
@@ -109,10 +104,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cla-prod
+  name: cla-dnf-prod
 spec:
   selector:
-    app: cla
+    app: cla-dnf
     env: prod
   ports:
   - protocol: TCP
