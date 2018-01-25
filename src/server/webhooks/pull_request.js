@@ -112,7 +112,7 @@ function handleWebHook(args, done) {
 }
 
 module.exports = function (req, res) {
-    if (['opened', 'reopened', 'synchronize'].indexOf(req.args.action) > -1 && (req.args.repository && req.args.repository.private == false)) {
+    if (['opened', 'reopened', 'synchronize'].indexOf(req.args.action) > -1 && isRepoEnabled(req.args.repository)) {
         if (req.args.pull_request && req.args.pull_request.html_url) {
             log.info('pull request ' + req.args.action + ' ' + req.args.pull_request.html_url);
         }
@@ -151,7 +151,7 @@ module.exports = function (req, res) {
 };
 
 function isRepoEnabled(repository) {
-    return repository && (repository.private === false || config.server.feature_flag.enable_private_repos === 'true');
+    return repository && (repository.private === false || config.server.feature_flag.enable_private_repos);
 }
 
 function collectMetrics(userId, startTime, signed, action, isClaRequired) {
