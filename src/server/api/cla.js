@@ -164,11 +164,14 @@ function validatePullRequest(args, done) {
 //      gist (mandatory)
 //      sharedGist (optional)
 // token (mandatory)
-function updateUsersPullRequests(args) {
+function updateUsersPullRequests(args, done) {
     User.findOne({ name: args.user }, (err, user) => {
         if (err || !user || !user.requests || user.requests.length < 1) {
+            if (err) {
+                return done(err);
+            }
             if (config.server.feature_flag.pre_populate_user_pull_request) {
-                return;
+                return done();
             }
             let req = {
                 args: {
@@ -177,21 +180,21 @@ function updateUsersPullRequests(args) {
                 }
             };
             if (args.item.sharedGist) {
-                return ClaApi.validateSharedGistItems(req, () => { });
+                return ClaApi.validateSharedGistItems(req, done);
             } else if (args.item.org) {
                 req.args.org = args.item.org;
-                return ClaApi.validateOrgPullRequests(req, () => { });
+                return ClaApi.validateOrgPullRequests(req, done);
             } else {
                 req.args.repo = args.repo;
                 req.args.owner = args.owner;
-                return ClaApi.validatePullRequests(req, () => { });
+                return ClaApi.validatePullRequests(req, done);
             }
         }
-        prepareForValidation(args.item, user);
-        log.metric('CLAAssistantSignedPullRequest', user.requests.length);
+        log.trackEvent('CLAAssistantSignedPullRequest', { uuid: user.uuid, name: user.name, requests: JSON.stringify(user.requests) }, { CLAAssistantSignedPullRequest: user.requests.length });
+        prepareForValidation(args.item, user, done);
     });
 
-    function prepareForValidation(item, user) {
+    function prepareForValidation(item, user, done) {
         const needRemove = [];
         async.series(user.requests.map((pullRequests, index) => {
             return function (callback) {
@@ -202,7 +205,7 @@ function updateUsersPullRequests(args) {
                     }
                     if ((linkedItem.owner === item.owner && linkedItem.repo === item.repo) || linkedItem.org === item.org || (linkedItem.gist === item.gist && item.sharedGist === true && linkedItem.sharedGist === true)) {
                         needRemove.push(index);
-                        validateUserPRs(pullRequests.repo, pullRequests.owner, linkedItem.gist, linkedItem.sharedGist, pullRequests.numbers, linkedItem.token);
+                        return validateUserPRs(pullRequests.repo, pullRequests.owner, linkedItem.gist, linkedItem.sharedGist, pullRequests.numbers, linkedItem.token, callback);
                     }
                     callback();
                 });
@@ -213,19 +216,24 @@ function updateUsersPullRequests(args) {
                 user.requests.splice(needRemove[i], 1);
             }
             user.save();
+            done();
         });
     }
 
-    function validateUserPRs(repo, owner, gist, sharedGist, numbers, token) {
-        numbers.forEach((prNumber) => {
-            validatePullRequest({
-                repo: repo,
-                owner: owner,
-                number: prNumber,
-                gist: gist,
-                sharedGist: sharedGist,
-                token: token
-            }, function () { });
+    function validateUserPRs(repo, owner, gist, sharedGist, numbers, token, done) {
+        async.parallel(numbers.map(prNumber => {
+            return (callback) => {
+                return validatePullRequest({
+                    repo: repo,
+                    owner: owner,
+                    number: prNumber,
+                    gist: gist,
+                    sharedGist: sharedGist,
+                    token: token
+                }, callback);
+            };
+        }), () => {
+            done();
         });
     }
 }
@@ -589,8 +597,10 @@ let ClaApi = {
                     }
                     return done(err);
                 }
-                updateUsersPullRequests(args);
-                log.metric('CLAAssistantUserSignDuration', (new Date() - startTime) / 1000);
+                updateUsersPullRequests(args, () => {
+                    log.metric('CLAAssistantUserSignDuration', (new Date() - startTime) / 1000);
+                });
+                // The sign API will get a timeout error if waiting for validating pull requests.
                 done(null, signed);
             });
         });
@@ -668,7 +678,7 @@ let ClaApi = {
                         log.error(new Error(err).stack);
                         return done(err);
                     }
-                    updateUsersPullRequests(req.args);
+                    updateUsersPullRequests(req.args, () => { });
                     // Add signature API will get a timeout error if waiting for validating pull requests.
                     done(null, signed);
                 });
