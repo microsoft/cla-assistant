@@ -63,7 +63,7 @@ function updateStatusAndComment(args, done) {
                     if (err) {
                         log.error(err, { args: JSON.stringify(args) });
                     }
-                    if (config.server.feature_flag.close_comment === 'true' && signed) {
+                    if (config.server.feature_flag.close_comment && signed) {
                         return done();
                     }
                     pullRequest.badgeComment(

@@ -29,12 +29,17 @@ if (config.server.appInsights) {
         .setAutoCollectDependencies(false)
         .start();
     log.metric = function (name, value) {
-        var client = appInsights.defaultClient;
-        return client.trackMetric({ name: name, value: value });
+        return appInsights.defaultClient.trackMetric({ name: name, value: value });
+    };
+    log.trackEvent = function (name, properties, measurements) {
+        return appInsights.defaultClient.trackEvent(name, properties, measurements);
     };
 } else {
     log.metric = function (name, value) {
-        log.info({ name: name, value: value });
+        log.info({ name, value });
+    };
+    log.trackEvent = function (name, properties, measurements) {
+        log.info({ name, properties, measurements });
     };
 }
 
