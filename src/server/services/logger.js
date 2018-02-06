@@ -32,7 +32,7 @@ if (config.server.appInsights) {
         return appInsights.defaultClient.trackMetric({ name: name, value: value });
     };
     log.trackEvent = function (name, properties, measurements) {
-        return appInsights.defaultClient.trackEvent(name, properties, measurements);
+        return appInsights.defaultClient.trackEvent({ name, properties, measurements });
     };
 } else {
     log.metric = function (name, value) {
