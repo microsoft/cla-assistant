@@ -190,7 +190,11 @@ function updateUsersPullRequests(args, done) {
                 return ClaApi.validatePullRequests(req, done);
             }
         }
-        log.trackEvent('CLAAssistantSignedPullRequest', { uuid: user.uuid, name: user.name, requests: JSON.stringify(user.requests) }, { CLAAssistantSignedPullRequest: user.requests.length });
+        let pullRequestNumber = 0;
+        user.requests.forEach(request => {
+            pullRequestNumber += request.numbers.length;
+        });
+        log.trackEvent('CLAAssistantSignedPullRequest', { uuid: user.uuid, name: user.name, requests: JSON.stringify(user.requests) }, { CLAAssistantSignedPullRequest: pullRequestNumber });
         prepareForValidation(args.item, user, done);
     });
 
