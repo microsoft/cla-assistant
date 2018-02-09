@@ -62,8 +62,10 @@
                 </div>
             </div>
             <div class="nav navbar-home-right">
-                <a ng-hide="!user.value.login" href="/logout" target="_self" class="octicon octicon-sign-out" style="font-size:19px" tooltip-placement="left"
-                    tooltip="Sign out"></a>
+                <a ng-hide="!user.value.login" href="/logout" target="_self" style="font-size:19px" tooltip-placement="left"
+                    tooltip="Sign out">
+                    <img src="/octicons/lib/svg/sign-out.svg">
+                </a>
             </div>
             <div class="navbar-center" style="">
                 <a href="/">
@@ -88,7 +90,7 @@
                 <div class="navbar-text navbar-center" style="z-index:-1;">
                     <p class="hidden-xs hidden-sm" style="margin-bottom: 0px;">
                         CLA Assistant made with
-                        <span class="octicon octicon-heart"></span> from the GitHub team at SAP
+                        <img src="/octicons/lib/svg/heart.svg"></span> from the GitHub team at SAP
                     </p>
                 </div>
                 <!--
