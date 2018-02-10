@@ -28,16 +28,10 @@ if (config.server.appInsights) {
         .setAutoCollectConsole(true)
         .setAutoCollectDependencies(false)
         .start();
-    log.metric = function (name, value) {
-        return appInsights.defaultClient.trackMetric({ name: name, value: value });
-    };
     log.trackEvent = function (name, properties, measurements) {
         return appInsights.defaultClient.trackEvent({ name, properties, measurements });
     };
 } else {
-    log.metric = function (name, value) {
-        log.info({ name, value });
-    };
     log.trackEvent = function (name, properties, measurements) {
         log.info({ name, properties, measurements });
     };
