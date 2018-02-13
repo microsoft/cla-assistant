@@ -602,7 +602,7 @@ let ClaApi = {
                     return done(err);
                 }
                 updateUsersPullRequests(args, () => {
-                    log.metric('CLAAssistantUserSignDuration', (new Date() - startTime) / 1000);
+                    log.trackEvent('CLAAssistantUserSignDuration', { repo: args.repo, owner: args.owner, user: args.user, userId: args.userId }, { CLAAssistantUserSignDuration: (new Date() - startTime) / 1000 });
                 });
                 // The sign API will get a timeout error if waiting for validating pull requests.
                 done(null, signed);

@@ -141,7 +141,7 @@ module.exports = function (req, res) {
                     args.orgId = undefined;
                 }
                 return handleWebHook(args, function (err) {
-                    collectMetrics(req.args.pull_request.user.id, startTime, args.signed, req.args.action, args.isClaRequired);
+                    collectMetrics(req.args.pull_request, startTime, args.signed, req.args.action, args.isClaRequired);
                 });
             });
         }, config.server.github.enforceDelay);
@@ -154,17 +154,25 @@ function isRepoEnabled(repository) {
     return repository && (repository.private === false || config.server.feature_flag.enable_private_repos);
 }
 
-function collectMetrics(userId, startTime, signed, action, isClaRequired) {
+function collectMetrics(pullRequest, startTime, signed, action, isClaRequired) {
     let diffTime = process.hrtime(startTime);
-    log.metric('CLAAssistantPullRequestDuration', diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)));
+    const logProperty = {
+        owner: pullRequest.base.repo.owner.login,
+        repo: pullRequest.base.repo.name,
+        number: pullRequest.number.toString(),
+        signed: signed.toString(),
+        isClaRequired: isClaRequired.toString(),
+        action: action
+    };
+    log.trackEvent('CLAAssistantPullRequestDuration', logProperty, { CLAAssistantPullRequestDuration: diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)) });
     if (action !== 'opened') {
         return;
     }
-    return cla.isEmployee(userId, function (err, isEmployee) {
-        log.metric('CLAAssistantPullRequest', isEmployee ? 0 : 1);
+    return cla.isEmployee(pullRequest.user.id, function (err, isEmployee) {
+        log.trackEvent('CLAAssistantPullRequest', Object.assign(logProperty, { isEmployee: isEmployee.toString() }), { CLAAssistantPullRequest: isEmployee ? 0 : 1 });
         if (isEmployee || !isClaRequired) {
             return;
         }
-        log.metric(signed ? 'CLAAssistantAlreadySignedPullRequest' : 'CLAAssistantCLARequiredPullRequest', 1);
+        log.trackEvent(signed ? 'CLAAssistantAlreadySignedPullRequest' : 'CLAAssistantCLARequiredPullRequest', logProperty, signed ? { CLAAssistantAlreadySignedPullRequest: 1 } : { CLAAssistantCLARequiredPullRequest: 1 });
     });
 }
