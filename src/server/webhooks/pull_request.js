@@ -160,7 +160,7 @@ function collectMetrics(pullRequest, startTime, signed, action, isClaRequired) {
         owner: pullRequest.base.repo.owner.login,
         repo: pullRequest.base.repo.name,
         number: pullRequest.number.toString(),
-        signed: signed.toString(),
+        signed: signed && signed.toString(),
         isClaRequired: isClaRequired.toString(),
         action: action
     };
