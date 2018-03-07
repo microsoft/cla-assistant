@@ -8,6 +8,7 @@ var path = require('path');
 var sass_middleware = require('node-sass-middleware');
 var cleanup = require('./middleware/cleanup');
 var noSniff = require('dont-sniff-mimetype');
+var mongoose = require('mongoose');
 // var sass_middleware = require('node-sass-middleware');
 
 // ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,12 +139,10 @@ async.series([
     // ////////////////////////////////////////////////////////////////////////////////////////////
 
     function (callback) {
-        var mongoose = require('mongoose');
-
-        mongoose.connect(config.server.mongodb.uri, {
+        retryInitializeMongoose(config.server.mongodb.uri, {
             useMongoClient: true,
             keepAlive: true
-        }, function () {
+        }, () => {
             bootstrap('documents', callback);
         });
 
@@ -232,5 +231,19 @@ app.all('/github/webhook/:repo', function (req, res) {
         res.status(500).send('Internal Server Error');
     }
 });
+
+function retryInitializeMongoose(uri, options, callback) {
+    mongoose.connect(uri, options, (err) => {
+        if (err) {
+            console.log(err, `Retry initialize mongoose in ${options.retryInitializeInterval}`);
+            setTimeout(() => {
+                retryInitializeMongoose(uri, options);
+            }, options.retryInitializeInterval || 1000);
+        }
+        if (typeof callback === 'function') {
+            callback();
+        }
+    });
+}
 
 module.exports = app;
