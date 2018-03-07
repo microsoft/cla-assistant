@@ -233,12 +233,13 @@ app.all('/github/webhook/:repo', function (req, res) {
 });
 
 function retryInitializeMongoose(uri, options, callback) {
-    mongoose.connect(uri, options, (err) => {
+    const defaultInterval = 1000;
+    mongoose.connect(uri, options, err => {
         if (err) {
-            console.log(err, `Retry initialize mongoose in ${options.retryInitializeInterval}`);
+            console.log(err, `Retry initialize mongoose in ${options.retryInitializeInterval || defaultInterval} milliseconds`);
             setTimeout(() => {
                 retryInitializeMongoose(uri, options);
-            }, options.retryInitializeInterval || 1000);
+            }, options.retryInitializeInterval || defaultInterval);
         }
         if (typeof callback === 'function') {
             callback();
