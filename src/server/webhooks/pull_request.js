@@ -65,7 +65,7 @@ function updateStatusAndComment(args, done) {
                 }
                 status.update(args, function (err) {
                     if (err) {
-                        logger.error(err, { args: JSON.stringify(args) });
+                        logger.error(err, { repo: args.repo, owner: args.owner, number:args.number, sha: args.sha, signed: args.signed });
                     }
                     if (config.server.feature_flag.close_comment && signed) {
                         return done();
@@ -87,7 +87,7 @@ function updateStatusAndComment(args, done) {
                     updateStatusAndComment(args, done);
                 }, 10000 * args.handleCount * args.handleDelay);
             } else {
-                logger.warn(new Error(err).stack, 'PR committers: ', committers, 'called with args: ', args);
+                logger.warn(new Error(err).stack, 'PR committers: ', committers, 'called with args: ', { repo: args.repo, owner: args.owner, number: args.number, handleCount: args.handleCount });
             }
         }
     });
@@ -102,7 +102,7 @@ function handleWebHook(args, done) {
         if (!isClaRequired) {
             return status.updateForClaNotRequired(args, function (err) {
                 if (err) {
-                    logger.error(err, { args: JSON.stringify(args) });
+                    logger.error(err, { repo: args.repo, owner: args.owner, number:args.number, sha: args.sha, signed: args.signed });
                 }
                 pullRequest.deleteComment({
                     repo: args.repo,
@@ -132,7 +132,7 @@ module.exports = function (req, res) {
         setTimeout(function () {
             cla.getLinkedItem(args, function (err, item) {
                 if (err) {
-                    return log.error(err, { owner: args.owner, repo: args.repo, number: args.number });
+                    return logger.error(err, { owner: args.owner, repo: args.repo, number: args.number });
                 }
                 if (!item) {
                     return;

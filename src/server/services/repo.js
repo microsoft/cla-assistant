@@ -163,7 +163,7 @@ module.exports = {
             github.callGraphql(query, arg.token, function (err, res, body) {
                 if (err || res.statusCode > 200) {
                     let msg = 'No result on GH call, getting PR committers!' + err;
-                    handleError(new Error(msg).stack, msg, arg);
+                    handleError(new Error(msg).stack, msg, { owner: arg.arg.owner, repo: arg.arg.repo, number: arg.arg.number });
 
                     return;
                 }
@@ -193,7 +193,7 @@ module.exports = {
                             }
                         } catch (error) {
                             let msg = 'Problem on PR ' + url.githubPullRequest(arg.owner, arg.repo, arg.number) + 'commit info seems to be wrong; ' + error;
-                            handleError(new Error(msg).stack, msg, arg);
+                            handleError(new Error(msg).stack, msg, { owner: arg.arg.owner, repo: arg.arg.repo, number: arg.arg.number });
                         }
                     });
 
@@ -217,11 +217,11 @@ module.exports = {
                                 callGithub(arg);
                             } else {
                                 let msg = 'Moved Permanently ' + err;
-                                handleError(new Error(msg).stack, msg, arg);
+                                handleError(new Error(msg).stack, msg, { owner: arg.arg.owner, repo: arg.arg.repo, number: arg.arg.number });
                             }
                         });
                     } else {
-                        handleError(new Error(res.message).stack, res.message, arg);
+                        handleError(new Error(res.message).stack, res.message, { owner: arg.arg.owner, repo: arg.arg.repo, number: arg.arg.number });
                         // if (!arg.count && self.timesToRetryGitHubCall && self.timesToRetryGitHubCall > 0) {
                         //     arg.count = self.timesToRetryGitHubCall;
                         //     setTimeout(function () {
@@ -258,7 +258,7 @@ module.exports = {
                     orgId: args.orgId
                 }, function (err, org) {
                     if (!org) {
-                        return handleError(new Error(error).stack, error, args);
+                        return handleError(new Error(error).stack, error, { owner: args.owner, repo: args.repo, repoId: args.repoId, orgId: args.orgId, number: args.number });
                     }
                     if (err) {
                         logger.warn(err);

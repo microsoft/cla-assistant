@@ -114,9 +114,7 @@ function validatePullRequest(args, done) {
     args.token = args.token ? args.token : token;
     cla.getLinkedItem(args, function (error, item) {
         if (error) {
-            let logArgs = Object.assign({}, args);
-            logArgs.token = logArgs.token ? logArgs.token.slice(0, 4) + '***' : undefined;
-            log.error(error.stack, logArgs);
+            log.error(error.stack, { repo: args.repo, owner: args.owner });
 
             return done();
         }
@@ -202,7 +200,7 @@ function updateUsersPullRequests(args, done) {
         user.requests.forEach(request => {
             pullRequestNumber += request.numbers.length;
         });
-        log.trackEvent('CLAAssistantSignedPullRequest', { uuid: user.uuid, name: user.name, requests: JSON.stringify(user.requests) }, { CLAAssistantSignedPullRequest: pullRequestNumber });
+        log.trackEvent('CLAAssistantSignedPullRequest', { requests: user.requests }, { CLAAssistantSignedPullRequest: pullRequestNumber });
         prepareForValidation(args.item, user, done);
     });
 
@@ -342,7 +340,7 @@ let ClaApi = {
 
     get: function (req, done) {
         if (!req.args || (!req.args.repo && !req.args.repoId && !req.args.orgId)) {
-            log.info('args: ', req.args);
+            log.info('args: ', { repo: req.args.repo, owner: req.args.owner, orgId: req.args.orgId });
             log.info('request headers: ', req.headers);
             done('Please, provide owner and repo name or orgId');
 
@@ -350,7 +348,7 @@ let ClaApi = {
         }
         this.getGist(req, function (err, res) {
             if (err || !res) {
-                log.error(new Error(err).stack, 'with args: ', req.args);
+                log.error(new Error(err).stack, 'with args: ', req.args, { repo: req.args.repo, owner: req.args.owner, orgId: req.args.orgId, gist: req.args.gist });
                 done(err);
 
                 return;
@@ -596,7 +594,7 @@ let ClaApi = {
             args.custom_fields = req.args.custom_fields;
         }
         let self = this;
-        log.info({ name: 'CLAAssistantUserSign', args: JSON.stringify(args) });
+        log.info({ name: 'CLAAssistantUserSign', repo: args.repo, owner: args.owner });
         let startTime = new Date();
         self.getLinkedItem({
             args: {
@@ -620,7 +618,7 @@ let ClaApi = {
                     return done(err);
                 }
                 updateUsersPullRequests(args, () => {
-                    log.trackEvent('CLAAssistantUserSignDuration', { repo: args.repo, owner: args.owner, user: args.user, userId: args.userId }, { CLAAssistantUserSignDuration: (new Date() - startTime) / 1000 });
+                    log.trackEvent('CLAAssistantUserSignDuration', { repo: args.repo, owner: args.owner }, { CLAAssistantUserSignDuration: (new Date() - startTime) / 1000 });
                 });
                 // The sign API will get a timeout error if waiting for validating pull requests.
                 done(null, signed);
