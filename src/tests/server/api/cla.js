@@ -304,6 +304,7 @@ describe('', function () {
                 assert(github.call.calledTwice);
                 assert(gistContent.raw);
                 assert(gistContent.meta);
+                assert(gistContent.updatedAt);
 
                 it_done();
             });

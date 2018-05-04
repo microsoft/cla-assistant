@@ -74,7 +74,7 @@ module.controller('ClaController', ['$log', '$window', '$scope', '$stateParams',
                     $scope.cla = $sce.trustAsHtml(gistContent.claText);
                     $scope.cla.text = gistContent.claText;
                     $scope.claText = gistContent.claText;
-
+                    $scope.updatedAt = new Date(gistContent.updatedAt).toISOString().slice(0, 10);
                     $scope.customFields = gistContent.customFields;
                     $scope.customKeys = gistContent.customKeys;
                     $scope.hasCustomFields = gistContent.hasCustomFields;

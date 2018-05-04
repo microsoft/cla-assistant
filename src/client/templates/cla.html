@@ -13,8 +13,11 @@
 				<div class="cla-box well">
 					<div ng-bind-html="cla"></div>
 				</div>
-				<div class="h4" ng-if="showSharedGistMsg()">
-					<em>This CLA applies to multiple repos or orgs.</em>
+				<div class="h4">
+					<em >version: {{updatedAt}}</em>
+				</div>
+				<div class="h4">
+					<em ng-if="showSharedGistMsg()"> This CLA applies to multiple repos or orgs.</em>
 				</div>
 				<form class="row" ng-if="hasCustomFields">
 					<p>
