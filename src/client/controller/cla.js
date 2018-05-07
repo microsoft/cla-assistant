@@ -194,8 +194,14 @@ module.controller('ClaController', ['$log', '$window', '$scope', '$stateParams',
             return valid;
         };
 
-        $scope.showSharedGistMsg = function () {
+        var showSharedGistMsg = function () {
             return $scope.linkedItem && $scope.linkedItem.sharedGist && (!$scope.signed || ($scope.signed && $scope.isSharedSignature));
+        };
+
+        $scope.titleMsg = function () {
+            var msg = $scope.signed ? 'You have signed the CLA for ' : 'Please sign the CLA for ';
+            msg += showSharedGistMsg() ? 'multiple repositories or organizations' : $scope.params.user + '/' + $scope.params.repo;
+            return msg;
         };
 
         $q.all([userPromise, repoPromise]).then(function () {

@@ -6,18 +6,11 @@
 			<p>There is no CLA to sign for {{params.user}}/{{params.repo}}</p>
 			<p>({{noLinkedItemError}})</p>
 		</div>
-
 		<form class="row" ng-hide="!!redirect || noLinkedItemError">
-				<h4 ng-hide="signed">Please sign the CLA for {{params.user}}/{{params.repo}}</h4>
-				<h4 ng-show="signed">You have signed the CLA for {{params.user}}/{{params.repo}}</h4>
+				<h4>{{titleMsg()}}</h4>
+				<p>Version: {{updatedAt}}</p>
 				<div class="cla-box well">
 					<div ng-bind-html="cla"></div>
-				</div>
-				<div class="h4">
-					<em >version: {{updatedAt}}</em>
-				</div>
-				<div class="h4">
-					<em ng-if="showSharedGistMsg()"> This CLA applies to multiple repos or orgs.</em>
 				</div>
 				<form class="row" ng-if="hasCustomFields">
 					<p>
