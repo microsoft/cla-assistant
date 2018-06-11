@@ -13,7 +13,6 @@ module.exports = {
     //     org.check(req.args, done);
     // },
     create: function (req, done) {
-        req.args.token = req.args.token || req.user.token;
         let schema = Joi.object().keys({
             orgId: Joi.number().required(),
             org: Joi.string().required(),
@@ -24,6 +23,11 @@ module.exports = {
             minFileChanges: Joi.number(),
             minCodeChanges: Joi.number()
         });
+        req.args.token = req.args.token || req.user.token;
+        if (config.server.github.adminToken) {
+            req.args.token = config.server.github.adminToken;
+            delete schema.token;
+        }
         Joi.validate(req.args, schema, { abortEarly: false, allowUnknown: true }, function (joiError) {
             if (joiError) {
                 joiError.code = 400;
