@@ -57,7 +57,8 @@ module.exports = {
 
         security: {
             sessionSecret: process.env.SESSION_SECRET || 'cla-assistant',
-            cookieMaxAge: 60 * 60 * 1000
+            cookieMaxAge: 60 * 60 * 1000,
+            cookieSecurity: !(process.env.NODE_ENV === 'localhost')
         },
 
         smtp: {
