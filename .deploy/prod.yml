@@ -55,7 +55,7 @@ spec:
         - name: GITHUB_ADMIN_TOKEN
           valueFrom:
             secretKeyRef:
-              name: github-msftgits-supper-token
+              name: github-msftgits-super-token
               key: value
         - name: GITHUB_ADMIN_USERS
           value: msftgits
