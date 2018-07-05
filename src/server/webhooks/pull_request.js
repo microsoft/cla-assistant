@@ -53,9 +53,12 @@ function storeRequest(committers, repo, owner, number) {
 }
 
 function updateStatusAndComment(args, done) {
+    logger.trackEvent('CLAAssistantPullRequestUpdateStatusAndCommentStart', { deliveryId: args.deliveryId });
     repoService.getPRCommitters(args, function (err, committers) {
+        logger.trackEvent('CLAAssistantPullRequestGetPRCommittersSuccess', { deliveryId: args.deliveryId });
         if (!err && committers && committers.length > 0) {
             cla.check(args, function (error, signed, user_map) {
+                logger.trackEvent('CLAAssistantPullRequestClaCheckSuccess', { deliveryId: args.deliveryId });
                 if (error) {
                     logger.warn(new Error(error).stack);
                 }
@@ -64,6 +67,7 @@ function updateStatusAndComment(args, done) {
                     storeRequest(user_map.not_signed, args.repo, args.owner, args.number);
                 }
                 status.update(args, function (err) {
+                    logger.trackEvent('CLAAssistantPullRequestStatusUpdateSuccess', { deliveryId: args.deliveryId });
                     if (err) {
                         logger.error(err, { repo: args.repo, owner: args.owner, number:args.number, sha: args.sha, signed: args.signed });
                     }
@@ -87,23 +91,27 @@ function updateStatusAndComment(args, done) {
                     updateStatusAndComment(args, done);
                 }, 10000 * args.handleCount * args.handleDelay);
             } else {
-                logger.warn(new Error(err).stack, 'PR committers: ', committers, 'called with args: ', { repo: args.repo, owner: args.owner, number: args.number, handleCount: args.handleCount });
+                logger.warn(new Error(err).stack, 'PR committers: ', committers, 'called with args: ', { repo: args.repo, owner: args.owner, number: args.number, handleCount: args.handleCount, deliveryId: args.deliveryId });
             }
         }
     });
 }
 
 function handleWebHook(args, done) {
+    logger.trackEvent('CLAAssistantPullRequestHandleWebHookStart', { deliveryId: args.deliveryId });
     cla.isClaRequired(args, function (error, isClaRequired) {
+        logger.trackEvent('CLAAssistantPullRequestIsClaRequiredSuccess', { deliveryId: args.deliveryId });
         if (error) {
             return done(error);
         }
         args.isClaRequired = isClaRequired;
         if (!isClaRequired) {
+            logger.trackEvent('CLAAssistantPullRequestUpdateForClaNotRequiredStart', { deliveryId: args.deliveryId });
             return status.updateForClaNotRequired(args, function (err) {
                 if (err) {
-                    logger.error(err, { repo: args.repo, owner: args.owner, number:args.number, sha: args.sha, signed: args.signed });
+                    logger.error(err, { repo: args.repo, owner: args.owner, number:args.number, sha: args.sha, signed: args.signed, deliveryId: args.deliveryId });
                 }
+                logger.trackEvent('CLAAssistantPullRequestDeleteCommentStart', { deliveryId: args.deliveryId });
                 pullRequest.deleteComment({
                     repo: args.repo,
                     owner: args.owner,
@@ -117,22 +125,26 @@ function handleWebHook(args, done) {
 
 module.exports = function (req, res) {
     if (['opened', 'reopened', 'synchronize'].indexOf(req.args.action) > -1 && isRepoEnabled(req.args.repository)) {
+        const deliveryId = req.headers['x-github-delivery'];
         if (req.args.pull_request && req.args.pull_request.html_url) {
-            logger.info('pull request ' + req.args.action + ' ' + req.args.pull_request.html_url);
+            logger.info(`pull request ${req.args.action} ${req.args.pull_request.html_url} ${deliveryId}`);
         }
         let args = {
             owner: req.args.repository.owner.login,
             repoId: req.args.repository.id,
             repo: req.args.repository.name,
-            number: req.args.number
+            number: req.args.number,
+            deliveryId: deliveryId
         };
         args.orgId = req.args.organization ? req.args.organization.id : req.args.repository.owner.id;
         args.handleDelay = req.args.handleDelay != undefined ? req.args.handleDelay : 1; // needed for unitTests
         let startTime = process.hrtime();
         setTimeout(function () {
+            logger.trackEvent('CLAAssistantPullRequestGetLinkedItemStart', { deliveryId });
             cla.getLinkedItem(args, function (err, item) {
+                logger.trackEvent('CLAAssistantPullRequestGetLinkedItemSuccess', { deliveryId });
                 if (err) {
-                    return logger.error(err, { owner: args.owner, repo: args.repo, number: args.number });
+                    return logger.error(err, { owner: args.owner, repo: args.repo, number: args.number, deliveryId });
                 }
                 if (!item) {
                     return;
@@ -149,9 +161,9 @@ module.exports = function (req, res) {
                 }
                 return handleWebHook(args, function (err) {
                     if (err) {
-                        return logger.error(err, 'CLAAssistantHandleWebHookFail', { owner: args.owner, repo: args.repo, number: args.number });
+                        return logger.error(err, 'CLAAssistantHandleWebHookFail', { owner: args.owner, repo: args.repo, number: args.number, deliveryId });
                     }
-                    collectMetrics(req.args.pull_request, startTime, args.signed, req.args.action, args.isClaRequired);
+                    collectMetrics(req.args.pull_request, startTime, args.signed, req.args.action, args.isClaRequired, deliveryId);
                 });
             });
         }, config.server.github.enforceDelay);
@@ -164,7 +176,7 @@ function isRepoEnabled(repository) {
     return repository && (repository.private === false || config.server.feature_flag.enable_private_repos);
 }
 
-function collectMetrics(pullRequest, startTime, signed, action, isClaRequired) {
+function collectMetrics(pullRequest, startTime, signed, action, isClaRequired, deliveryId) {
     let diffTime = process.hrtime(startTime);
     const logProperty = {
         owner: pullRequest.base.repo.owner.login,
@@ -172,7 +184,8 @@ function collectMetrics(pullRequest, startTime, signed, action, isClaRequired) {
         number: pullRequest.number,
         signed: signed,
         isClaRequired: isClaRequired,
-        action: action
+        action: action,
+        deliveryId: deliveryId
     };
     logger.trackEvent('CLAAssistantPullRequestDuration', logProperty, { CLAAssistantPullRequestDuration: diffTime[0] * 1000 + Math.round(diffTime[1] / Math.pow(10, 6)) });
     if (action !== 'opened') {

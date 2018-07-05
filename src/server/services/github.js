@@ -139,7 +139,7 @@ let githubService = {
 
         if (token) {
             github.authenticate({
-                type: 'oauth',
+                type: 'token',
                 token: token
             });
         }
