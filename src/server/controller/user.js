@@ -1,6 +1,7 @@
 let passport = require('passport');
 let express = require('express');
 let utils = require('../middleware/utils');
+const logger = require('../services/logger');
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // User controller
@@ -38,16 +39,28 @@ function checkReturnTo(req, res, next) {
 
 router.get('/auth/github', checkReturnTo);
 
-router.get('/auth/github/callback', passport.authenticate('github', {
-    failureRedirect: '/'
-}),
-    function (req, res) {
-        if (req.user && req.session.requiredScope != 'public' && utils.couldBeAdmin(req.user.login) && (!req.user.scope || req.user.scope.indexOf('write:repo_hook') < 0)) {
-            return res.redirect('/auth/github?admin=true');
+router.get('/auth/github/callback', (req, res, next) => {
+    passport.authenticate('github', (err, user) => {
+        if (err) {
+            logger.error(err);
+            return res.redirect('/');
         }
-        res.redirect(req.session.returnTo || req.headers.referer || '/');
-        req.session.next = null;
-    });
+        if (!user) {
+            return res.redirect('/');
+        }
+        req.login(user, loginErr => {
+            if (loginErr) {
+                logger.error(loginErr);
+                return res.redirect('/');
+            }
+            if (req.user && req.session.requiredScope != 'public' && utils.couldBeAdmin(req.user.login) && (!req.user.scope || req.user.scope.indexOf('write:repo_hook') < 0)) {
+                return res.redirect('/auth/github?admin=true');
+            }
+            res.redirect(req.session.returnTo || req.headers.referer || '/');
+            req.session.next = null;
+        });
+    })(req, res, next);
+});
 
 router.get('/logout',
     function (req, res, next) {
