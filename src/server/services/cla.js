@@ -477,6 +477,9 @@ module.exports = function () {
                 });
             } else if (args.number) {
                 return self.checkPullRequestSignatures(args, function (error, result) {
+                    if (error) {
+                        return done(error);
+                    }
                     done(error, result.signed, result.user_map);
                 });
             }

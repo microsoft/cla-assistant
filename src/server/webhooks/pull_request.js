@@ -60,7 +60,7 @@ function updateStatusAndComment(args, done) {
             cla.check(args, function (error, signed, user_map) {
                 logger.trackEvent('CLAAssistantPullRequestClaCheckSuccess', { deliveryId: args.deliveryId });
                 if (error) {
-                    logger.warn(new Error(error).stack);
+                    return logger.error(new Error(error).stack);
                 }
                 args.signed = signed;
                 if (user_map && user_map.not_signed) {
