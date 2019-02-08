@@ -85,12 +85,7 @@ function stub() {
             if (testErr.gistData) {
                 return Promise.reject(testErr.gistData);
             }
-
-return Promise.resolve(testRes.gistData);
-        } else if (args.obj === 'pullRequests' && args.fun === 'getFiles') {
-            assert(args.arg.noCache);
-
-return Promise.resolve(testRes.pullRequestFiles);
+            return Promise.resolve(testRes.gistData);
         }
     });
 }
@@ -1590,16 +1585,6 @@ describe('cla:isClaRequired', function () {
             gist: 'url/gistId',
             token: 'abc'
         };
-        testRes.pullRequestFiles = [
-            {
-                filename: 'test1',
-                changes: 4,
-            },
-            {
-                filename: 'test2',
-                changes: 10,
-            }
-        ];
     });
 
     afterEach(function () {
@@ -1616,15 +1601,16 @@ describe('cla:isClaRequired', function () {
 
     it('should require a CLA when pull request exceed minimum file changes', function (it_done) {
         testRes.repoServiceGet.minFileChanges = 2;
-        testRes.pullRequestFiles = {
-            data: [{
-                filename: 'test1'
-            }, {
-                filename: 'test2'
-            }]
+        testRes.getPR = {
+            changed_files: 2,
         };
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
+            sinon.assert.calledWithMatch(github.call, {
+                obj: 'pullRequests',
+                fun: 'get',
+                arg: { noCache: true }
+            });
             assert(isClaRequired);
             it_done();
         });
@@ -1632,17 +1618,17 @@ describe('cla:isClaRequired', function () {
 
     it('should require a CLA when pull request exceed minimum code changes', function (it_done) {
         testRes.repoServiceGet.minCodeChanges = 15;
-        testRes.pullRequestFiles = {
-            data: [{
-                filename: 'test1',
-                changes: 5
-            }, {
-                filename: 'test2',
-                changes: 10
-            }]
+        testRes.getPR = {
+            deletions: 10,
+            additions: 10,
         };
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
+            sinon.assert.calledWithMatch(github.call, {
+                obj: 'pullRequests',
+                fun: 'get',
+                arg: { noCache: true }
+            });
             assert(isClaRequired);
             it_done();
         });
@@ -1651,11 +1637,10 @@ describe('cla:isClaRequired', function () {
     it('should NOT require a CLA when pull request NOT exceed minimum file and code changes', function (it_done) {
         testRes.repoServiceGet.minFileChanges = 2;
         testRes.repoServiceGet.minCodeChanges = 15;
-        testRes.pullRequestFiles = {
-            data: [{
-                filename: 'test1',
-                changes: 14,
-            }]
+        testRes.getPR = {
+            changed_files: 1,
+            deletions: 7,
+            additions: 7
         };
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
@@ -1675,15 +1660,18 @@ describe('cla:isClaRequired', function () {
     it('should NOT send error if token is not provided but use linked item\'s token', function (it_done) {
         delete args.token;
         testRes.repoServiceGet.minCodeChanges = 15;
-        testRes.pullRequestFiles = {
-            data: [{
-                filename: 'test1',
-                changes: 15
-            }]
+        testRes.getPR = {
+            changed_files: 1,
+            additions: 14,
+            deletions: 1
         };
         cla.isClaRequired(args, function (err, isClaRequired) {
             assert.ifError(err);
-            sinon.assert.calledWithMatch(github.call, { token: 'abc' });
+            sinon.assert.calledWithMatch(github.call, {
+                obj: 'pullRequests',
+                fun: 'get',
+                arg: { noCache: true }
+            });
             assert(isClaRequired);
             it_done();
         });
