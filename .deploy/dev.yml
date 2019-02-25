@@ -11,7 +11,7 @@ spec:
         env: dev
     spec:
       containers:
-      - image: ospok8sprod.azurecr.io/cla-dev:__BUILD_BUILDID__
+      - image: ospoaksdev.azurecr.io/cla-dev:__BUILD_BUILDID__
         name: cla-dev
         ports:
         - containerPort: 5000
@@ -58,7 +58,10 @@ spec:
               name: github-msftgits-super-token-dev
               key: value
         - name: GITHUB_ADMIN_USERS
-          value: 'jeffmcaffer, willbar, jeffwilcox, geneh, notlaforge, arnom-ms, capfei, MichaelTsengLZ, MichaelTsengZL'
+          valueFrom:
+            secretKeyRef:
+              name: cla-dev-admin-users
+              key: value
         - name: CLOSE_COMMENT
           value: 'true'
         - name: REQUIRED_SIGNEES
@@ -72,7 +75,7 @@ spec:
         - name: ALWAYS_SHOW_UNSIGNED_LIST
           value: 'true'
       imagePullSecrets:
-        - name: ospok8sprod.azurecr.io
+        - name: ospoaksdev.azurecr.io
 ---
 apiVersion: v1
 kind: Service
