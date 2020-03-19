@@ -692,7 +692,7 @@ describe('repo:getUserRepos', function () {
     it('should handle affiliation if not provided', function (it_done) {
         github.call.restore();
         sinon.stub(github, 'call').callsFake(function (args, done) {
-            assert(args.arg.affiliation === 'owner,organization_member');
+            assert(args.arg.affiliation === 'owner,collaborator,organization_member');
             assert(args.token);
             done(githubCallRes.err, githubCallRes.data);
         });

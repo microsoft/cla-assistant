@@ -292,7 +292,7 @@ module.exports = {
 
     getUserRepos: function (args, done) {
         let that = this;
-        let affiliation = args.affiliation ? args.affiliation : 'owner,organization_member';
+        let affiliation = args.affiliation ? args.affiliation : 'owner,collaborator,organization_member';
         github.call({
             obj: 'repos',
             fun: 'getAll',
