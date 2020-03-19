@@ -81,7 +81,7 @@ spec:
               name: cla-assistant-github-app-private-key-prod
               key: value
         - name: GITHUB_ADMIN_USERS
-          value: 'jongalloway, dnfadmin, MichaelTsengLZ, onovotny, haacked'
+          value: 'jongalloway, dnfadmin, MichaelTsengLZ, clairernovotny, haacked'
         - name: CLOSE_COMMENT
           value: 'true'
         - name: REQUIRED_SIGNEES
