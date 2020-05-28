@@ -2,7 +2,6 @@ require('../documents/org');
 let mongoose = require('mongoose');
 let Org = mongoose.model('Org');
 let config = require('../../config');
-const github = require('./github');
 const installation = require('./installation');
 
 let selection = function (args) {

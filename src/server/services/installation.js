@@ -22,7 +22,6 @@ class Installation {
             return await this.app.getInstallationAccessToken({ installationId });
         } catch (err) {
             logger.trackEvent('Installation.getInstallationAccessToken.Failed', { repo, owner, msg: err.message });
-            return;
         }
     }
 
@@ -42,7 +41,7 @@ class Installation {
             }
         });
         this.cache.put(key, data.id, aDay);
-        return data.id
+        return data.id;
     }
 
     async getOrgInstallationId(org) {
@@ -59,7 +58,7 @@ class Installation {
             }
         });
         this.cache.put(org, data.id, aDay);
-        return data.id
+        return data.id;
     }
 }
 
