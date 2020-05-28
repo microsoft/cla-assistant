@@ -4,6 +4,8 @@ const logger = require('./logger');
 const memCache = require('memory-cache');
 const config = require('../../config');
 
+const aDay = 1000 * 60 * 60 * 24;
+
 class Installation {
 
     constructor(cache = memCache, app) {
@@ -19,7 +21,7 @@ class Installation {
             const installationId = repo ? await this.getRepoInstallationId(repo, owner) : await this.getOrgInstallationId(owner);
             return await this.app.getInstallationAccessToken({ installationId });
         } catch (err) {
-            logger.trackEvent('github.getInstallationAccessToken.Failed', { repo, owner });
+            logger.trackEvent('Installation.getInstallationAccessToken.Failed', { repo, owner });
             return;
         }
     }
@@ -39,7 +41,7 @@ class Installation {
                 accept: 'application/vnd.github.machine-man-preview+json',
             }
         });
-        cache.push(key, data.id);
+        this.cache.put(key, data.id, aDay);
         return data.id
     }
 
@@ -56,7 +58,7 @@ class Installation {
                 accept: 'application/vnd.github.machine-man-preview+json',
             }
         });
-        cache.push(org, data.id);
+        this.cache.put(org, data.id, aDay);
         return data.id
     }
 }
