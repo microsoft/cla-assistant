@@ -21,7 +21,7 @@ class Installation {
             const installationId = repo ? await this.getRepoInstallationId(repo, owner) : await this.getOrgInstallationId(owner);
             return await this.app.getInstallationAccessToken({ installationId });
         } catch (err) {
-            logger.trackEvent('Installation.getInstallationAccessToken.Failed', { repo, owner });
+            logger.trackEvent('Installation.getInstallationAccessToken.Failed', { repo, owner, msg: err.message });
             return;
         }
     }
