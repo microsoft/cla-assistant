@@ -73,12 +73,12 @@ spec:
         - name: GITHUB_APP_ID
           valueFrom:
             secretKeyRef:
-              name: cla-assistant-github-app-private-key-prod
+              name: cla-assistant-github-app-private-key-prod-dnf
               key: appId
         - name: GITHUB_APP_PRIVATE_KEY
           valueFrom:
             secretKeyRef:
-              name: cla-assistant-github-app-private-key-prod
+              name: cla-assistant-github-app-private-key-prod-dnf
               key: value
         - name: GITHUB_ADMIN_USERS
           value: 'jongalloway, dnfadmin, MichaelTsengLZ, clairernovotny, haacked'
