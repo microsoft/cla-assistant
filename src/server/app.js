@@ -159,7 +159,7 @@ async.series([
         })
         const session = {
             secret: config.server.security.sessionSecret,
-            saveUninitialized: true,
+            saveUninitialized: false,
             resave: false,
             cookie: {
                 maxAge: config.server.security.cookieMaxAge
