@@ -23,7 +23,6 @@ async function checkToken(item, accessToken) {
             access_token: oldToken,
             headers: {
                 authorization: `Basic ${Buffer.from(`${config.server.github.client}:${config.server.github.secret}`, 'utf8').toString('base64')}`,
-                // accept: 'application/vnd.github.doctor-strange-preview+json'
             }
         });
 
@@ -31,7 +30,7 @@ async function checkToken(item, accessToken) {
             updateToken(item, newToken);
         }
         const { data } = response;
-        if (!data || !data.scopes || data.scopes.indexOf('write:repo_hook') == 0) {
+        if (!data || !data.scopes || data.scopes.indexOf('write:repo_hook') < 0) {
             updateToken(item, newToken);
         } else if (item.repo) {
             repoService.getGHRepo(item, function (err, ghRepo) {
