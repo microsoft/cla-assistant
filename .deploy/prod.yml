@@ -6,7 +6,7 @@ spec:
   replicas: 3
   selector:
     matchLabels:
-      app: cla
+      app: cla-dnf
       env: prod
   template:
     metadata:
