@@ -30,7 +30,7 @@
         "bunyan": "^1.8.12",
         "bunyan-sentry-stream": "^1.2.1",
         "bunyan-slack": "0.0.10",
-        "codeceptjs": "^1.4.4",
+        "codeceptjs": "^3.3.0",
         "colors": "^1.2.1",
         "connect-mongo": "^4.6.0",
         "cookie-parser": "^1.4.3",
