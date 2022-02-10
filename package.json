@@ -21,6 +21,7 @@
     "dependencies": {
         "@octokit/app": "^4.2.0",
         "@octokit/request": "^5.4.4",
+        "@octokit/rest": "14.0.0",
         "angular": "^1.8.2",
         "applicationinsights": "^1.0.0",
         "array-sugar": "^1.2.2",
@@ -37,7 +38,6 @@
         "ejs": "^2.5.8",
         "express": "^4.16.3",
         "express-session": "^1.15.6",
-        "github": "^13.1.1",
         "glob": "^7.1.2",
         "joi": "^13.1.2",
         "json-stable-stringify": "^1.0.1",
@@ -54,7 +54,7 @@
         "request": "^2.87.0",
         "sha256": "^0.2.0",
         "snyk": "^1.849.0",
-        "socket.io": "^2.4.1",
+        "socket.io": "^4.4.1",
         "valid-url": "^1.0.9",
         "x-frame-options": "^1.0.0"
     },
