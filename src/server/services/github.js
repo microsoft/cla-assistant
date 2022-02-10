@@ -3,7 +3,7 @@ let request = require('request');
 
 let cache = require('memory-cache');
 let config = require('../../config');
-let GitHubApi = require('github');
+let GitHubApi = require('@octokit/rest');
 let stringify = require('json-stable-stringify');
 let logger = require('./logger');
 let sha256 = require('sha256');
