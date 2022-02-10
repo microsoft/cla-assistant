@@ -26,7 +26,6 @@
         "array-sugar": "^1.2.2",
         "async": "^2.6.0",
         "body-parser": "^1.18.2",
-        "bower": "^1.8.13",
         "bunyan": "^1.8.12",
         "bunyan-sentry-stream": "^1.2.1",
         "bunyan-slack": "0.0.10",
@@ -60,6 +59,7 @@
         "x-frame-options": "^1.0.0"
     },
     "devDependencies": {
+        "bower": "^1.8.13",
         "eslint": "^4.19.1",
         "grunt": "^1.4.1",
         "grunt-cli": "^1.2.0",
