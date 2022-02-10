@@ -46,7 +46,7 @@ app.use(require('cookie-parser')());
 app.use(noSniff());
 app.enable('trust proxy');
 let expressSession = require('express-session');
-let MongoStore = require('connect-mongo')(expressSession);
+let MongoStore = require('connect-mongo');
 
 // custom mrepodleware
 app.use('/api', require('./middleware/param'));
@@ -143,7 +143,6 @@ async.series([
 
     function (callback) {
         retryInitializeMongoose(config.server.mongodb.uri, {
-            useMongoClient: true,
             keepAlive: true
         }, () => {
             bootstrap('documents', callback);
@@ -157,9 +156,10 @@ async.series([
                 secure: config.server.security.cookieSecurity,
                 maxAge: config.server.security.cookieMaxAge
             },
-            store: new MongoStore({
-                mongooseConnection: mongoose.connection,
-                collection: 'cookieSession'
+            store: MongoStore.create({
+                client: mongoose.connection.getClient(),
+                collection: 'cookieSession',
+                autoRemove: 'interval'
             })
         }));
         app.use(passport.initialize());
