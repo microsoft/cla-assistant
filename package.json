@@ -89,9 +89,6 @@
         "supertest": "3.0.0",
         "webdriverio": "^4.13.2"
     },
-    "engines": {
-        "node": "8"
-    },
     "scripts": {
         "start": "node app.js",
         "postinstall": "bower install",
