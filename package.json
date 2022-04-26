@@ -25,7 +25,7 @@
         "angular": "^1.8.2",
         "applicationinsights": "^1.0.0",
         "array-sugar": "^1.2.2",
-        "async": "^2.6.0",
+        "async": "^2.6.4",
         "body-parser": "^1.18.2",
         "bunyan": "^1.8.12",
         "bunyan-sentry-stream": "^1.2.1",
