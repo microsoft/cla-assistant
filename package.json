@@ -98,5 +98,8 @@
         "snyk-protect": "snyk protect",
         "prepublish": "npm run snyk-protect"
     },
-    "snyk": true
+    "snyk": true,
+    "overrides": {
+        "minimist": "1.2.6"
+    }
 }
