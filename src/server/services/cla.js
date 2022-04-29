@@ -202,7 +202,15 @@ module.exports = function () {
 
     let getLinkedItem = async function (repo, owner, token) {
         let deferred = q.defer();
-        token = token || await installation.getInstallationAccessToken(repo, owner) || config.server.github.token;
+        let installationToken = "";
+        try {
+            installationToken = await installation.getInstallationAccessToken(repo, owner);
+        } catch (e) {
+            const error = new Error("Failed to get installation access token with error: " + JSON.stringify(e));
+            logger.error(error);
+            throw error;
+        }
+        token = token || installationToken || config.server.github.token;
         if (owner && !repo) {
             orgService.get({
                 org: owner
@@ -555,6 +563,7 @@ module.exports = function () {
 
                 return signature;
             } catch (error) {
+                logger.error(New Error('Failed to sign with error:' + error));
                 throw error;
             }
         },
