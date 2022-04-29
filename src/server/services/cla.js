@@ -563,7 +563,7 @@ module.exports = function () {
 
                 return signature;
             } catch (error) {
-                logger.error(New Error('Failed to sign with error:' + error));
+                logger.error(new Error('Failed to sign with error:' + JSON.stringify(error)));
                 throw error;
             }
         },

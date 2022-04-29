@@ -46,7 +46,7 @@ class Installation {
             this.cache.put(key, data.id, aDay);
             return data.id;
         } catch (err) {
-            logger.error(new Error("GetRepoInstallationId failed with err: " + JSON.stringify(err)));
+            logger.error(new Error('GetRepoInstallationId failed with err: ' + JSON.stringify(err)));
         }
     }
 
@@ -67,7 +67,7 @@ class Installation {
             this.cache.put(org, data.id, aDay);
             return data.id;
         } catch (err) {
-            logger.error(new Error("GetOrgInstallationId failed with err: " + JSON.stringify(err)));
+            logger.error(new Error('GetOrgInstallationId failed with err: ' + JSON.stringify(err)));
         }
     }
 }
