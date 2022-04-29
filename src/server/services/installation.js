@@ -34,16 +34,20 @@ class Installation {
             return existing;
         }
         const jwt = this.app.getSignedJsonWebToken();
-        const { data } = await request('GET /repos/:owner/:repo/installation', {
-            owner,
-            repo,
-            headers: {
-                authorization: `Bearer ${jwt}`,
-                accept: 'application/vnd.github.machine-man-preview+json',
-            }
-        });
-        this.cache.put(key, data.id, aDay);
-        return data.id;
+        try {
+            const { data } = await request('GET /repos/:owner/:repo/installation', {
+                owner,
+                repo,
+                headers: {
+                    authorization: `Bearer ${jwt}`,
+                    accept: 'application/vnd.github.machine-man-preview+json',
+                }
+            });
+            this.cache.put(key, data.id, aDay);
+            return data.id;
+        } catch (err) {
+            logger.error(new Error('GetRepoInstallationId failed with err: ' + JSON.stringify(err)));
+        }
     }
 
     async getOrgInstallationId(org) {
@@ -51,16 +55,20 @@ class Installation {
         if (existing) {
             return existing;
         }
-        const jwt = this.app.getSignedJsonWebToken();
-        const { data } = await request('GET /orgs/:org/installation', {
-            org,
-            headers: {
-                authorization: `Bearer ${jwt}`,
-                accept: 'application/vnd.github.machine-man-preview+json',
-            }
-        });
-        this.cache.put(org, data.id, aDay);
-        return data.id;
+        try {
+            const jwt = this.app.getSignedJsonWebToken();
+            const { data } = await request('GET /orgs/:org/installation', {
+                org,
+                headers: {
+                    authorization: `Bearer ${jwt}`,
+                    accept: 'application/vnd.github.machine-man-preview+json',
+                }
+            });
+            this.cache.put(org, data.id, aDay);
+            return data.id;
+        } catch (err) {
+            logger.error(new Error('GetOrgInstallationId failed with err: ' + JSON.stringify(err)));
+        }
     }
 }
 

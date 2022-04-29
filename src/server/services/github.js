@@ -144,18 +144,26 @@ let githubService = {
         }
 
         if (token) {
-            github.authenticate({
-                type: 'token',
-                token: token
-            });
+            try {
+                github.authenticate({
+                    type: 'token',
+                    token: token
+                });
+            } catch(err) {
+                logger.error(new Error('Error authenticating with token ' + JSON.stringify(err)).stack);
+            }
         }
 
         if (basicAuth) {
-            github.authenticate({
-                type: 'basic',
-                username: basicAuth.user,
-                password: basicAuth.pass
-            });
+            try {
+                github.authenticate({
+                    type: 'basic',
+                    username: basicAuth.user,
+                    password: basicAuth.pass
+                });
+            } catch(err) {
+                logger.error(new Error('Error authenticating with basic auth ' + JSON.stringify(err)).stack);
+            }
         }
 
         setTimeout(function () {
