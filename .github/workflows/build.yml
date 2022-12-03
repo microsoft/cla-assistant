@@ -64,3 +64,18 @@ jobs:
     - name: deploy to staging cloud run service
       if: github.ref == 'refs/heads/master' 
       run: gcloud --quiet --project sap-cla-assistant beta run deploy cla-assistant-staging --platform managed --region europe-west1 --image eu.gcr.io/sap-cla-assistant/cla-assistant:${GITHUB_SHA}
+
+    - name: Count Lines of Code (cloc)
+      if: github.ref != 'refs/heads/master'
+      uses: djdefi/cloc-action@main
+    - name: Update cloc file
+      if: github.ref != 'refs/heads/master'
+      run: |
+        git checkout cloc || git checkout -b cloc
+        mkdir -p docs/cloc
+        cp cloc.txt docs/cloc/cloc.txt
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/cloc/cloc.txt
+        git commit -m 'Auto update cloc info' || exit 0
+        git push origin HEAD:cloc
